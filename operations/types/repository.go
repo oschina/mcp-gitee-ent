@@ -1,13 +1,14 @@
 package types
 
 type BasicRepository struct {
-	ID           int    `json:"id"`
-	Name         string `json:"name"`
-	Path         string `json:"path"`
-	Public       int    `json:"public"`
-	EnterpriseId int    `json:"enterprise_id"`
-	CreatedAt    string `json:"created_at"`
-	UpdatedAt    string `json:"updated_at"`
+	ID                int    `json:"id"`
+	Name              string `json:"name"`
+	Path              string `json:"path"`
+	PathWithNamespace string `json:"path_with_namespace"`
+	Public            int    `json:"public"`
+	EnterpriseId      int    `json:"enterprise_id"`
+	CreatedAt         string `json:"created_at"`
+	UpdatedAt         string `json:"updated_at"`
 }
 
 type Repository struct {
@@ -23,7 +24,6 @@ type Repository struct {
 	Namespace         *Namespace       `json:"namespace"`
 	Outsourced        bool             `json:"outsourced"`
 	ParentProject     *BasicRepository `json:"parent_project"`
-	PathWithNamespace string           `json:"path_with_namespace"`
 	RepoSize          int              `json:"repo_size"`
 	StarsCount        int              `json:"stars_count"`
 	StatusName        string           `json:"status_name"`

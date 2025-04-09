@@ -22,7 +22,7 @@ var CommentPullTool = mcp.NewTool(CommentEntPull,
 	),
 	mcp.WithString(
 		"project_id",
-		mcp.Description("Project PathWithNamespace"),
+		mcp.Description("Project ID or PathWithNamespace"),
 		mcp.Required(),
 	),
 	mcp.WithNumber(
@@ -38,12 +38,6 @@ var CommentPullTool = mcp.NewTool(CommentEntPull,
 	mcp.WithNumber(
 		"reply_id",
 		mcp.Description("Reply ID"),
-	),
-	mcp.WithString(
-		"qt",
-		mcp.Description("Query type (path/id)"),
-		mcp.Enum("path", "id"),
-		mcp.DefaultString("path"),
 	),
 )
 
@@ -67,7 +61,9 @@ func CommentPullHandleFunc(ctx context.Context, request mcp.CallToolRequest) (*m
 
 	apiUrl := fmt.Sprintf("/%d/projects/%s/pull_requests/%d/notes", enterpriseID, url.QueryEscape(projectIDArg.(string)), pullRequestID)
 	request.Params.Arguments["pr_qt"] = "iid"
-	request.Params.Arguments["qt"] = "path"
+	if !utils.IsAllDigits(projectIDArg.(string)) {
+		request.Params.Arguments["qt"] = "path"
+	}
 	giteeClient := utils.NewGiteeClient("POST", apiUrl, utils.WithPayload(request.Params.Arguments))
 
 	data := types.PullComment{}

@@ -22,19 +22,13 @@ var GetPullDiffTool = mcp.NewTool(GetEntPullDiff,
 	),
 	mcp.WithString(
 		"project_id",
-		mcp.Description("Project PathWithNamespace"),
+		mcp.Description("Project ID or PathWithNamespace"),
 		mcp.Required(),
 	),
 	mcp.WithNumber(
 		"pull_request_id",
 		mcp.Description("Pull request IID"),
 		mcp.Required(),
-	),
-	mcp.WithString(
-		"qt",
-		mcp.Description("Query type (path/id)"),
-		mcp.Enum("path", "id"),
-		mcp.DefaultString("path"),
 	),
 )
 
@@ -55,7 +49,9 @@ func GetPullDiffHandleFunc(ctx context.Context, request mcp.CallToolRequest) (*m
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), err
 	}
-	request.Params.Arguments["qt"] = "path"
+	if !utils.IsAllDigits(projectIDArg.(string)) {
+		request.Params.Arguments["qt"] = "path"
+	}
 	request.Params.Arguments["pr_qt"] = "iid"
 
 	apiUrl := fmt.Sprintf("/%d/projects/%s/pull_requests/%d/diff", enterpriseID, url.QueryEscape(projectIDArg.(string)), pullRequestID)

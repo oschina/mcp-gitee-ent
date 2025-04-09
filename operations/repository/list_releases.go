@@ -22,14 +22,8 @@ var ListReleasesTool = mcp.NewTool(ListReleases,
 	),
 	mcp.WithString(
 		"project_id",
-		mcp.Description("Project PathWithNamespace"),
+		mcp.Description("Project ID or PathWithNamespace"),
 		mcp.Required(),
-	),
-	mcp.WithString(
-		"qt",
-		mcp.Description("Query type (path/id)"),
-		mcp.Enum("path", "id"),
-		mcp.DefaultString("path"),
 	),
 	mcp.WithNumber(
 		"page",
@@ -55,7 +49,9 @@ func ListReleasesHandleFunc(ctx context.Context, request mcp.CallToolRequest) (*
 		return mcp.NewToolResultError(err.Error()), err
 	}
 	projectIDArg := request.Params.Arguments["project_id"]
-	request.Params.Arguments["qt"] = "path"
+	if !utils.IsAllDigits(projectIDArg.(string)) {
+		request.Params.Arguments["qt"] = "path"
+	}
 
 	apiUrl := fmt.Sprintf("/%d/projects/%s/releases", enterpriseID, url.QueryEscape(projectIDArg.(string)))
 

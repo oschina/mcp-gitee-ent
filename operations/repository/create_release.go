@@ -22,7 +22,7 @@ var CreateReleaseTool = mcp.NewTool(CreateRelease,
 	),
 	mcp.WithString(
 		"project_id",
-		mcp.Description("Project PathWithNamespace"),
+		mcp.Description("Project ID or PathWithNamespace"),
 		mcp.Required(),
 	),
 	mcp.WithString(
@@ -63,7 +63,9 @@ func CreateReleaseHandleFunc(ctx context.Context, request mcp.CallToolRequest) (
 		return mcp.NewToolResultError(err.Error()), err
 	}
 	projectIDArg := request.Params.Arguments["project_id"]
-	request.Params.Arguments["qt"] = "path"
+	if !utils.IsAllDigits(projectIDArg.(string)) {
+		request.Params.Arguments["qt"] = "path"
+	}
 
 	apiUrl := fmt.Sprintf("/%d/projects/%s/releases", enterpriseID, url.QueryEscape(projectIDArg.(string)))
 

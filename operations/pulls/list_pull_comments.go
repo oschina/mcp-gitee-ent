@@ -22,7 +22,7 @@ var ListPullCommentsTool = mcp.NewTool(ListEntPullComments,
 	),
 	mcp.WithString(
 		"project_id",
-		mcp.Description("Project PathWithNamespace"),
+		mcp.Description("Project ID or PathWithNamespace"),
 		mcp.Required(),
 	),
 	mcp.WithNumber(
@@ -62,7 +62,9 @@ func ListPullCommentsHandleFunc(ctx context.Context, request mcp.CallToolRequest
 
 	apiUrl := fmt.Sprintf("/%d/projects/%s/pull_requests/%d/notes", enterpriseID, url.QueryEscape(projectIDArg.(string)), pullRequestID)
 	request.Params.Arguments["pr_qt"] = "iid"
-	request.Params.Arguments["qt"] = "path"
+	if !utils.IsAllDigits(projectIDArg.(string)) {
+		request.Params.Arguments["qt"] = "path"
+	}
 	giteeClient := utils.NewGiteeClient("GET", apiUrl, utils.WithQuery(request.Params.Arguments))
 
 	data := types.PagedResponse[types.PullComment]{}

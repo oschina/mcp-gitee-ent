@@ -22,7 +22,7 @@ var GetEntPullDetailTool = mcp.NewTool(GetEntPullDetail,
 	),
 	mcp.WithString(
 		"project_id",
-		mcp.Description("Project PathWithNamespace"),
+		mcp.Description("Project ID or PathWithNamespace"),
 		mcp.Required(),
 	),
 	mcp.WithNumber(
@@ -48,7 +48,9 @@ func GetPullDetailHandleFunc(ctx context.Context, request mcp.CallToolRequest) (
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), err
 	}
-	request.Params.Arguments["qt"] = "path"
+	if !utils.IsAllDigits(projectIDArg.(string)) {
+		request.Params.Arguments["qt"] = "path"
+	}
 	request.Params.Arguments["pr_qt"] = "iid"
 
 	apiUrl := fmt.Sprintf("/%d/projects/%s/pull_requests/%d", enterpriseID, url.QueryEscape(projectIDArg.(string)), pullRequestID)

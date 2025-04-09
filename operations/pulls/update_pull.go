@@ -3,17 +3,18 @@ package pulls
 import (
 	"context"
 	"fmt"
+	"gitee.com/oschina/mcp-gitee-ent/operations/types"
 	"gitee.com/oschina/mcp-gitee-ent/utils"
 	"github.com/mark3labs/mcp-go/mcp"
 	"net/url"
 )
 
 const (
-	MergeEntPull = "merge_enterprise_pull"
+	UpdateEntPull = "update_enterprise_pull"
 )
 
-var MergePullTool = mcp.NewTool(MergeEntPull,
-	mcp.WithDescription("Merge a pull request in an enterprise"),
+var UpdatePullTool = mcp.NewTool(UpdateEntPull,
+	mcp.WithDescription("Update a pull request in an enterprise"),
 	mcp.WithNumber(
 		"enterprise_id",
 		mcp.Description("Enterprise ID"),
@@ -26,31 +27,33 @@ var MergePullTool = mcp.NewTool(MergeEntPull,
 	),
 	mcp.WithNumber(
 		"pull_request_id",
-		mcp.Description("Pull request ID"),
+		mcp.Description("Pull request IID"),
 		mcp.Required(),
 	),
 	mcp.WithString(
-		"merge_method",
-		mcp.Description("Merge method"),
-		mcp.Enum("merge", "squash", "rebase"),
-		mcp.DefaultString("merge"),
+		"target_branch",
+		mcp.Description("Target branch name"),
 	),
 	mcp.WithString(
 		"title",
-		mcp.Description("Merge title"),
+		mcp.Description("Pull request title"),
 	),
 	mcp.WithString(
-		"description",
-		mcp.Description("Merge description"),
+		"body",
+		mcp.Description("Pull request description"),
+	),
+	mcp.WithString(
+		"state_event",
+		mcp.Description("State event"),
+		mcp.Enum("close", "reopen"),
 	),
 )
 
-func MergePullHandleFunc(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func UpdatePullHandleFunc(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	// Validate required parameters
 	if checkResult, err := utils.CheckRequired(request.Params.Arguments, "project_id", "pull_request_id"); err != nil {
 		return checkResult, err
 	}
-
 	enterpriseIDArg := request.Params.Arguments["enterprise_id"]
 	enterpriseID, err := utils.SafelyConvertToInt(enterpriseIDArg)
 	if err != nil {
@@ -58,16 +61,18 @@ func MergePullHandleFunc(ctx context.Context, request mcp.CallToolRequest) (*mcp
 	}
 	projectIDArg := request.Params.Arguments["project_id"]
 	pullRequestIDArg := request.Params.Arguments["pull_request_id"]
-	pullRequestId, err := utils.SafelyConvertToInt(pullRequestIDArg)
+	pullRequestID, err := utils.SafelyConvertToInt(pullRequestIDArg)
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), err
 	}
-
-	apiUrl := fmt.Sprintf("/%d/projects/%s/pull_requests/%d/merge", enterpriseID, url.QueryEscape(projectIDArg.(string)), pullRequestId)
 	request.Params.Arguments["pr_qt"] = "iid"
 	if !utils.IsAllDigits(projectIDArg.(string)) {
 		request.Params.Arguments["qt"] = "path"
 	}
-	giteeClient := utils.NewGiteeClient("POST", apiUrl, utils.WithPayload(request.Params.Arguments))
-	return giteeClient.HandleMCPResult(nil)
+
+	apiUrl := fmt.Sprintf("/%d/projects/%s/pull_requests/%d", enterpriseID, url.QueryEscape(projectIDArg.(string)), pullRequestID)
+	giteeClient := utils.NewGiteeClient("PUT", apiUrl, utils.WithPayload(request.Params.Arguments))
+
+	data := types.PullDetail{}
+	return giteeClient.HandleMCPResult(&data)
 }

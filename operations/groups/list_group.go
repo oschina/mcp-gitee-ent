@@ -20,11 +20,6 @@ var ListEntGroupsTool = mcp.NewTool(ListEntGroup,
 		mcp.Required(),
 	),
 	mcp.WithString(
-		"qt",
-		mcp.Description("Query type (path/id)"),
-		mcp.Enum("path", "id"),
-	),
-	mcp.WithString(
 		"sort",
 		mcp.Description("Sort field (created_at: created time, updated_at: updated time)"),
 		mcp.Enum("created_at", "updated_at"),

@@ -59,6 +59,7 @@ func addTools(s *server.MCPServer) {
 	s.AddTool(pulls.CommentPullTool, pulls.CommentPullHandleFunc)
 	s.AddTool(pulls.ListPullCommentsTool, pulls.ListPullCommentsHandleFunc)
 	s.AddTool(pulls.MergePullTool, pulls.MergePullHandleFunc)
+	s.AddTool(pulls.UpdatePullTool, pulls.UpdatePullHandleFunc)
 
 	// Enterprises
 	s.AddTool(enterprises.ListEnterprisesTool, enterprises.ListEnterprisesHandleFunc)

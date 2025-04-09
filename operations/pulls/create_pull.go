@@ -22,7 +22,7 @@ var CreateEntPullTool = mcp.NewTool(CreateEntPull,
 	),
 	mcp.WithString(
 		"project_id",
-		mcp.Description("Project PathWithNamespace"),
+		mcp.Description("Project ID or PathWithNamespace"),
 		mcp.Required(),
 	),
 	mcp.WithString(
@@ -76,7 +76,9 @@ func CreateEntPullHandleFunc(ctx context.Context, request mcp.CallToolRequest) (
 	projectIDArg := request.Params.Arguments["project_id"]
 
 	apiUrl := fmt.Sprintf("/%d/projects/%s/pull_requests", enterpriseID, url.QueryEscape(projectIDArg.(string)))
-	request.Params.Arguments["qt"] = "path"
+	if !utils.IsAllDigits(projectIDArg.(string)) {
+		request.Params.Arguments["qt"] = "path"
+	}
 	giteeClient := utils.NewGiteeClient("POST", apiUrl, utils.WithPayload(request.Params.Arguments))
 
 	data := types.PullDetail{}

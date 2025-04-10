@@ -100,6 +100,7 @@ mcp-gitee-ent --version
 | **create_enterprise_repo_pull** | Pull Request | 创建仓库拉取请求     |
 | **merge_enterprise_pull** | Pull Request | 合并拉取请求         |
 | **get_enterprise_pull_detail** | Pull Request | 获取拉取请求详情     |
+| **update_enterprise_pull** | Pull Request | 更新拉取请求        |
 | **get_enterprise_pull_diff** | Pull Request | 获取拉取请求差异     |
 | **comment_enterprise_pull** | Pull Request | 评论拉取请求        |
 | **list_enterprise_pull_comments** | Pull Request | 列出拉取请求评论   |

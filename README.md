@@ -99,6 +99,7 @@ The server provides various tools for interacting with Gitee Enterprise:
 | **create_enterprise_repo_pull** | Pull Request | Create a pull request for repository |
 | **merge_enterprise_pull** | Pull Request | Merge a pull request |
 | **get_enterprise_pull_detail** | Pull Request | Get pull request detail |
+| **update_enterprise_pull** | Pull Request | Update a pull request |
 | **get_enterprise_pull_diff** | Pull Request | Get pull request diff |
 | **comment_enterprise_pull** | Pull Request | Comment on a pull request |
 | **list_enterprise_pull_comments** | Pull Request | List pull request comments |

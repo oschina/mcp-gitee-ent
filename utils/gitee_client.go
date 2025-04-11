@@ -96,7 +96,7 @@ func WithQuery(query map[string]interface{}) Option {
 				case int:
 					parsedValue = strconv.Itoa(v.(int))
 				case float32, float64:
-					parsedValue = fmt.Sprintf("%f", v)
+					parsedValue = fmt.Sprintf("%.f", v)
 				case bool:
 					parsedValue = strconv.FormatBool(v.(bool))
 				}

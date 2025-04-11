@@ -1,6 +1,6 @@
 # Gitee Enterprise MCP Server
 
-Gitee Enterprise MCP 服务器是一个用于 Gitee Enterprise 的模型上下文协议（Model Context Protocol，MCP）服务器实现。它提供了一系列与 Gitee Enterprise API 交互的工具，使 AI 助手能够管理企业仓库、Issue、Pull Request 以及项目管理相关能力等。
+Gitee Enterprise MCP Server 是 Gitee Enterprise 的模型上下文协议（Model Context Protocol，MCP）服务器实现。它提供了一系列与 Gitee Enterprise API 交互的工具，使 AI 助手能够管理企业仓库、Issue、Pull Request 以及项目管理相关能力等。
 
 ## 功能特点
 
@@ -68,8 +68,8 @@ mcp-gitee-ent --version
 
 ### 命令行选项
 
-- `-token`：Gitee 访问令牌
-- `-api-base`：Gitee Ent API 基础 URL（默认：https://api.gitee.com/api/enterprises）
+- `-token`：访问令牌
+- `-api-base`：Gitee ent API base URL（默认：https://api.gitee.com/api/enterprises）
 - `-version`：显示版本信息
 - `-transport`：传输类型（stdio 或 sse，默认：stdio）
 - `-sse-address`：启动 SSE 服务器的主机和端口（默认：localhost:8000）
@@ -79,7 +79,7 @@ mcp-gitee-ent --version
 您也可以使用环境变量配置服务器：
 
 - `GITEE_ENT_MCP_ACCESS_TOKEN`：Gitee MCP ent 访问令牌
-- `GITEE_ENT_API_BASE`：Gitee API 基础 URL
+- `GITEE_ENT_API_BASE`：Gitee ent API base URL
 
 ## 许可证
 

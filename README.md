@@ -67,8 +67,8 @@ Config example:
 
 ### Command-line Options
 
-- `-token`: Gitee access token
-- `-api-base`: Gitee API base URL (default: https://api.gitee.com/api/enterprises)
+- `-token`: access token
+- `-api-base`: Gitee Ent API base URL (default: https://api.gitee.com/api/enterprises)
 - `-version`: Show version information
 - `-transport`: Transport type (stdio or sse, default: stdio)
 - `-sse-address`: The host and port to start the SSE server on (default: localhost:8000)
@@ -77,8 +77,8 @@ Config example:
 
 You can also configure the server using environment variables:
 
-- `GITEE_ENT_MCP_ACCESS_TOKEN`: Gitee mcp access token
-- `GITEE_ENT_API_BASE`: Gitee API base URL
+- `GITEE_ENT_MCP_ACCESS_TOKEN`: Gitee MCP ent access token
+- `GITEE_ENT_API_BASE`: Gitee ENT API base URL
 
 ## License
 

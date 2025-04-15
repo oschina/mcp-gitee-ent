@@ -58,7 +58,7 @@ mcp-gitee-ent --version
     "gitee": {
       "command": "mcp-gitee-ent",
       "env": {
-        "GITEE_ENT_API_BASE": "https://api.gitee.com/api/enterprises",
+        "GITEE_ENT_API_BASE": "https://api.gitee.com/enterprises",
         "GITEE_ENT_MCP_ACCESS_TOKEN": "<your mcp ent access token>",
       }
     }
@@ -69,7 +69,7 @@ mcp-gitee-ent --version
 ### 命令行选项
 
 - `-token`：访问令牌
-- `-api-base`：Gitee ent API base URL（默认：https://api.gitee.com/api/enterprises）
+- `-api-base`：Gitee ent API base URL（默认：https://api.gitee.com/enterprises）
 - `-version`：显示版本信息
 - `-transport`：传输类型（stdio 或 sse，默认：stdio）
 - `-sse-address`：启动 SSE 服务器的主机和端口（默认：localhost:8000）

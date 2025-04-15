@@ -57,7 +57,7 @@ Config example:
     "gitee": {
       "command": "mcp-gitee-ent",
       "env": {
-        "GITEE_ENT_API_BASE": "https://api.gitee.com/api/enterprises",
+        "GITEE_ENT_API_BASE": "https://api.gitee.com/enterprises",
         "GITEE_ENT_MCP_ACCESS_TOKEN": "<your mcp ent access token>",
       }
     }
@@ -68,7 +68,7 @@ Config example:
 ### Command-line Options
 
 - `-token`: access token
-- `-api-base`: Gitee Ent API base URL (default: https://api.gitee.com/api/enterprises)
+- `-api-base`: Gitee Ent API base URL (default: https://api.gitee.com/enterprises)
 - `-version`: Show version information
 - `-transport`: Transport type (stdio or sse, default: stdio)
 - `-sse-address`: The host and port to start the SSE server on (default: localhost:8000)

@@ -22,11 +22,11 @@ var ListIssuesTool = mcp.NewTool(ListIssues,
 	),
 	mcp.WithString(
 		"project_id",
-		mcp.Description("Repository ID"),
+		mcp.Description("Associated Repository ID"),
 	),
 	mcp.WithString(
 		"program_id",
-		mcp.Description("Project ID (multiple can be selected, separated by commas)"),
+		mcp.Description("Associated Project ID (multiple can be selected, separated by commas)"),
 	),
 	mcp.WithString(
 		"state",
@@ -48,7 +48,7 @@ var ListIssuesTool = mcp.NewTool(ListIssues,
 	),
 	mcp.WithString(
 		"collaborator_ids",
-		mcp.Description("Collaborators. (Comma-separated ID string)"),
+		mcp.Description("Collaborator's ids. (Comma-separated ID string)"),
 	),
 	mcp.WithString(
 		"created_at",
@@ -135,6 +135,7 @@ func ListIssuesHandleFunc(ctx context.Context, request mcp.CallToolRequest) (*mc
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), err
 	}
+	request.Params.Arguments["show_scrum_sprints"] = true
 
 	apiUrl := fmt.Sprintf("/%d/issues", enterpriseID)
 	giteeClient := utils.NewGiteeClient("GET", apiUrl, utils.WithQuery(request.Params.Arguments))

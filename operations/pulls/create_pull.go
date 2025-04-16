@@ -22,7 +22,7 @@ var CreateEntPullTool = mcp.NewTool(CreateEntPull,
 	),
 	mcp.WithString(
 		"project_id",
-		mcp.Description("Project ID or PathWithNamespace"),
+		mcp.Description("Repository ID or repository's PathWithNamespace"),
 		mcp.Required(),
 	),
 	mcp.WithString(

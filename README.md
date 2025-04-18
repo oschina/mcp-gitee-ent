@@ -8,6 +8,19 @@ Gitee Enterprise MCP Server is a Model Context Protocol (MCP) server implementat
 - Support for enterprise-level operations and management
 - Configurable API base URL to support different Gitee Enterprise instances
 
+<Details>
+<summary><b>Scenario Example</b></summary>
+
+1. Get specific enterprise issues
+   ![get_issues](./docs/images/get_issues.png)
+2. Improve the issue content
+   ![update_issue](./docs/images/update_issue.png)
+3. Divide subtasks
+   ![create_sup_issues](./docs/images/create_sub_issues.png)
+4. Create PR/Review PR
+   ![create_pr_and_review](./docs/images/pr_review.png)
+</details>
+
 ## Installation
 
 ### Prerequisites

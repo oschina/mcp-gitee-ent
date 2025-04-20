@@ -107,36 +107,37 @@ mcp-gitee-ent --version
 
 服务器提供了各种与 Gitee Enterprise 交互的工具：
 
-| 工具                                     | 类别         | 描述             |
-| ---------------------------------------- | ------------ | ---------------- |
-| **list_enterprises**               | 企业         | 列出用户的企业   |
-| **list_enterprise_repositories**   | 仓库         | 列出企业中的仓库 |
-| **create_enterprise_repository**   | 仓库         | 在企业中创建仓库 |
-| **create_enterprise_repo_release** | 仓库         | 为仓库创建发行版 |
-| **list_enterprise_repo_releases**  | 仓库         | 列出仓库发行版   |
-| **list_enterprise_pulls**          | Pull Request | 列出企业拉取请求 |
-| **create_enterprise_repo_pull**    | Pull Request | 创建仓库拉取请求 |
-| **merge_enterprise_pull**          | Pull Request | 合并拉取请求     |
-| **get_enterprise_pull_detail**     | Pull Request | 获取拉取请求详情 |
-| **update_enterprise_pull**         | Pull Request | 更新拉取请求     |
-| **get_enterprise_pull_diff**       | Pull Request | 获取拉取请求差异 |
-| **comment_enterprise_pull**        | Pull Request | 评论拉取请求     |
-| **list_enterprise_pull_comments**  | Pull Request | 列出拉取请求评论 |
-| **create_enterprise_issue**        | Issue        | 创建 Issue       |
-| **update_enterprise_issue**        | Issue        | 更新 Issue       |
-| **get_enterprise_issue_detail**    | Issue        | 获取 Issue 详情  |
-| **list_enterprise_issues**         | Issue        | 列出 Issues      |
-| **comment_enterprise_issue**       | Issue        | 评论 Issue       |
-| **list_enterprise_issue_comments** | Issue        | 列出 Issue 评论  |
-| **get_user_info**                  | 用户         | 获取用户信息     |
-| **list_enterprise_members**        | 成员         | 列出企业成员     |
-| **list_enterprise_groups**         | 团队         | 列出企业团队     |
-| **list_enterprise_labels**         | 标签         | 列出企业标签     |
-| **list_programs**                  | 项目         | 列出企业项目     |
-| **list_scrum_sprints**             | 项目         | 列出 Scrum 迭代  |
-| **list_scrum_versions**            | 项目         | 列出 Scrum 版本  |
-| **list_issue_types**               | 工作项类型   | 列出工作项类型   |
-| **list_issue_type_states**         | 工作项状态   | 列出工作项状态   |
+| 工具                                 | 类别           | 描述          |
+|------------------------------------|--------------|-------------|
+| **list_enterprises**               | 企业           | 列出用户的企业     |
+| **list_enterprise_repositories**   | 仓库           | 列出企业中的仓库    |
+| **create_enterprise_repository**   | 仓库           | 在企业中创建仓库    |
+| **create_enterprise_repo_release** | 仓库           | 为仓库创建发行版    |
+| **list_enterprise_repo_releases**  | 仓库           | 列出仓库发行版     |
+| **list_enterprise_pulls**          | Pull Request | 列出企业拉取请求    |
+| **create_enterprise_repo_pull**    | Pull Request | 创建仓库拉取请求    |
+| **merge_enterprise_pull**          | Pull Request | 合并拉取请求      |
+| **get_enterprise_pull_detail**     | Pull Request | 获取拉取请求详情    |
+| **update_enterprise_pull**         | Pull Request | 更新拉取请求      |
+| **get_enterprise_pull_diff**       | Pull Request | 获取拉取请求差异    |
+| **comment_enterprise_pull**        | Pull Request | 评论拉取请求      |
+| **list_enterprise_pull_comments**  | Pull Request | 列出拉取请求评论    |
+| **create_enterprise_issue**        | Issue        | 创建 Issue    |
+| **update_enterprise_issue**        | Issue        | 更新 Issue    |
+| **get_enterprise_issue_detail**    | Issue        | 获取 Issue 详情 |
+| **list_enterprise_issues**         | Issue        | 列出 Issues   |
+| **comment_enterprise_issue**       | Issue        | 评论 Issue    |
+| **list_enterprise_issue_comments** | Issue        | 列出 Issue 评论 |
+| **get_user_info**                  | 用户           | 获取用户信息      |
+| **list_enterprise_members**        | 成员           | 列出企业成员      |
+| **list_enterprise_groups**         | 团队           | 列出企业团队      |
+| **list_enterprise_labels**         | 标签           | 列出企业标签      |
+| **list_programs**                  | 项目           | 列出企业项目      |
+| **list_scrum_sprints**             | 项目           | 列出 Scrum 迭代 |
+| **create_scrum_sprint**            | 项目           | 创建 Scrum 迭代 |
+| **list_scrum_versions**            | 项目           | 列出 Scrum 版本 |
+| **list_issue_types**               | 工作项类型        | 列出工作项类型     |
+| **list_issue_type_states**         | 工作项状态        | 列出工作项状态     |
 
 ## 贡献
 

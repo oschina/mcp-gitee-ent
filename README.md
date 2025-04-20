@@ -128,6 +128,7 @@ The server provides various tools for interacting with Gitee Enterprise:
 | **list_enterprise_labels** | Label | List labels of an enterprise |
 | **list_programs**        | Program      | List programs of an enterprise |
 | **list_scrum_sprints**   | Program        | List Scrum Sprints |
+| **create_scrum_sprint**  | Program        | Create a Scrum Sprint |
 | **list_scrum_versions**  | Program        | List Scrum Versions |
 | **list_issue_types**     | Issue Type   | List issue types |
 | **list_issue_type_states** | Issue State | List issue states |

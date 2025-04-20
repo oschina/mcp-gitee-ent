@@ -18,8 +18,8 @@ type ScrumSprint struct {
 	OpenIssuesCount   int       `json:"open_issues_count"`
 	ClosedIssuesCount int       `json:"closed_issues_count"`
 	TotalIssuesCount  int       `json:"total_issues_count"`
-	TotalFeatureCount string    `json:"total_feature_count"`
-	TotalBugCount     string    `json:"total_bug_count"`
+	TotalFeatureCount int       `json:"total_feature_count"`
+	TotalBugCount     int       `json:"total_bug_count"`
 	TotalDuration     float64   `json:"total_duration"`
 	Assignee          BasicUser `json:"assignee"`
 }

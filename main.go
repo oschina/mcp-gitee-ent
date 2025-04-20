@@ -80,6 +80,7 @@ func addTools(s *server.MCPServer) {
 	s.AddTool(programs.ListProgramsTool, programs.ListProgramsHandleFunc)
 
 	// ScrumSprints
+	s.AddTool(scrum_sprints.CreateScrumSprintTool, scrum_sprints.CreateScrumSprintHandleFunc)
 	s.AddTool(scrum_sprints.ListScrumSprintsTool, scrum_sprints.ListScrumSprintsHandleFunc)
 
 	// ScrumVersions

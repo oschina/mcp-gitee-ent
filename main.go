@@ -21,6 +21,7 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 	"log"
 	"os"
+	"strings"
 )
 
 var (
@@ -91,12 +92,35 @@ func addTools(s *server.MCPServer) {
 
 	// Groups
 	s.AddTool(groups.ListEntGroupsTool, groups.ListEntGroupsHandleFunc)
+}
 
+var disabledToolsetsFlag string
+
+func getDisabledToolsets() []string {
+	if disabledToolsetsFlag == "" {
+		disabledToolsetsFlag = os.Getenv("DISABLED_TOOLSETS")
+	}
+
+	if disabledToolsetsFlag == "" {
+		return nil
+	}
+
+	tools := strings.Split(disabledToolsetsFlag, ",")
+	for i := range tools {
+		tools[i] = strings.TrimSpace(tools[i])
+	}
+
+	return tools
 }
 
 func run(transport, addr string) error {
 	s := newMCPServer()
 	addTools(s)
+
+	if disabledTools := getDisabledToolsets(); len(disabledTools) > 0 {
+		s.DeleteTools(disabledTools...)
+	}
+
 	switch transport {
 	case "stdio":
 		if err := server.ServeStdio(s); err != nil {
@@ -124,28 +148,37 @@ func run(transport, addr string) error {
 }
 
 func main() {
-	accessToken := flag.String("token", "", "Gitee Ent MCP access token")
-	apiBase := flag.String("api-base", "", "Gitee Ent API base URL (default: https://api.gitee.com/enterprises)")
-	showVersion := flag.Bool("version", false, "Show version information")
-	transport := flag.String("transport", "stdio", "Transport type (stdio or sse)")
-	addr := flag.String("sse-address", "localhost:8000", "The host and port to start the sse server on")
+	var (
+		accessToken string
+		apiBase     string
+		showVersion bool
+		transport   string
+		addr        string
+	)
+
+	flag.StringVar(&accessToken, "token", "", "Gitee Ent MCP access token")
+	flag.StringVar(&apiBase, "api-base", "", "Gitee Ent API base URL (default: https://api.gitee.com/enterprises)")
+	flag.BoolVar(&showVersion, "version", false, "Show version information")
+	flag.StringVar(&transport, "transport", "stdio", "Transport type (stdio or sse)")
+	flag.StringVar(&addr, "sse-address", "localhost:8000", "The host and port to start the sse server on")
+	flag.StringVar(&disabledToolsetsFlag, "disabled-toolsets", "", "Comma-separated list of tools to disable")
 	flag.Parse()
 
-	if *showVersion {
+	if showVersion {
 		fmt.Printf("Gitee MCP Ent Server\n")
 		fmt.Printf("Version: %s\n", Version)
 		os.Exit(0)
 	}
 
-	if *accessToken != "" {
-		utils.SetGiteeAccessToken(*accessToken)
+	if accessToken != "" {
+		utils.SetGiteeAccessToken(accessToken)
 	}
 
-	if *apiBase != "" {
-		utils.SetApiBase(*apiBase)
+	if apiBase != "" {
+		utils.SetApiBase(apiBase)
 	}
 
-	if err := run(*transport, *addr); err != nil {
+	if err := run(transport, addr); err != nil {
 		panic(err)
 	}
 }

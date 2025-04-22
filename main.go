@@ -18,6 +18,7 @@ import (
 	"gitee.com/oschina/mcp-gitee-ent/operations/scrum_versions"
 	"gitee.com/oschina/mcp-gitee-ent/operations/user"
 	"gitee.com/oschina/mcp-gitee-ent/utils"
+	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 	"log"
 	"os"
@@ -25,7 +26,9 @@ import (
 )
 
 var (
-	Version = utils.Version
+	Version              = utils.Version
+	disabledToolsetsFlag string
+	enabledToolsetsFlag  string
 )
 
 func newMCPServer() *server.MCPServer {
@@ -37,64 +40,95 @@ func newMCPServer() *server.MCPServer {
 	)
 }
 
-func addTools(s *server.MCPServer) {
-	//Issues
-	s.AddTool(issues.ListIssuesTool, issues.ListIssuesHandleFunc)
-	s.AddTool(issues.CreateIssueTool, issues.CreateIssueHandleFunc)
-	s.AddTool(issues.GetIssueDetailTool, issues.GetIssueDetailHandleFunc)
-	s.AddTool(issues.UpdateIssueTool, issues.UpdateIssueHandleFunc)
-	s.AddTool(issues.CommentIssueTool, issues.CommentIssueHandleFunc)
-	s.AddTool(issues.ListIssueCommentsTool, issues.ListIssueCommentsHandleFunc)
+func addTool(s *server.MCPServer, tool mcp.Tool, handleFunc server.ToolHandlerFunc) {
+	enabledToolsets := getEnabledToolsets()
+	if len(enabledToolsets) == 0 {
+		s.AddTool(tool, handleFunc)
+		return
+	}
 
-	// Repositories
-	s.AddTool(repository.ListRepositoriesTool, repository.ListRepositoriesHandleFunc)
-	s.AddTool(repository.CreateRepositoryTool, repository.CreateRepositoryHandleFunc)
-	s.AddTool(repository.CreateReleaseTool, repository.CreateReleaseHandleFunc)
-	s.AddTool(repository.ListReleasesTool, repository.ListReleasesHandleFunc)
+	for i := range enabledToolsets {
+		enabledToolsets[i] = strings.TrimSpace(enabledToolsets[i])
+	}
 
-	// Pulls
-	s.AddTool(pulls.ListEntPullsTool, pulls.ListEntPullsHandleFunc)
-	s.AddTool(pulls.CreateEntPullTool, pulls.CreateEntPullHandleFunc)
-	s.AddTool(pulls.GetEntPullDetailTool, pulls.GetPullDetailHandleFunc)
-	s.AddTool(pulls.GetPullDiffTool, pulls.GetPullDiffHandleFunc)
-	s.AddTool(pulls.CommentPullTool, pulls.CommentPullHandleFunc)
-	s.AddTool(pulls.ListPullCommentsTool, pulls.ListPullCommentsHandleFunc)
-	s.AddTool(pulls.MergePullTool, pulls.MergePullHandleFunc)
-	s.AddTool(pulls.UpdatePullTool, pulls.UpdatePullHandleFunc)
-
-	// Enterprises
-	s.AddTool(enterprises.ListEnterprisesTool, enterprises.ListEnterprisesHandleFunc)
-
-	// Labels
-	s.AddTool(labels.ListEnterpriseLabelsTool, labels.ListEnterpriseLabelsHandleFunc)
-
-	// IssueTypes
-	s.AddTool(issue_types.ListIssueTypesTool, issue_types.ListIssueTypesHandleFunc)
-
-	// IssueStates
-	s.AddTool(issue_states.ListIssueTypeStatesTool, issue_states.ListIssueTypeStatesHandleFunc)
-
-	//Users
-	s.AddTool(user.GetUserInfoTool, user.GetUserInfoHandleFunc)
-
-	// Programs
-	s.AddTool(programs.ListProgramsTool, programs.ListProgramsHandleFunc)
-
-	// ScrumSprints
-	s.AddTool(scrum_sprints.CreateScrumSprintTool, scrum_sprints.CreateScrumSprintHandleFunc)
-	s.AddTool(scrum_sprints.ListScrumSprintsTool, scrum_sprints.ListScrumSprintsHandleFunc)
-
-	// ScrumVersions
-	s.AddTool(scrum_versions.ListScrumVersionsTool, scrum_versions.ListScrumVersionsHandleFunc)
-
-	// Members
-	s.AddTool(members.ListEntMembersTool, members.ListEntMembersHandleFunc)
-
-	// Groups
-	s.AddTool(groups.ListEntGroupsTool, groups.ListEntGroupsHandleFunc)
+	for _, keepTool := range enabledToolsets {
+		if tool.Name == keepTool {
+			s.AddTool(tool, handleFunc)
+			return
+		}
+	}
 }
 
-var disabledToolsetsFlag string
+func disableTools(s *server.MCPServer) {
+	if enabledToolsetsFlag != "" {
+		enabledToolsetsFlag = os.Getenv("ENABLED_TOOLSETS")
+	}
+
+	if enabledToolsetsFlag != "" {
+		return
+	}
+
+	if disabledTools := getDisabledToolsets(); len(disabledTools) > 0 {
+		s.DeleteTools(disabledTools...)
+	}
+}
+
+func addTools(s *server.MCPServer) {
+	//Issues
+	addTool(s, issues.ListIssuesTool, issues.ListIssuesHandleFunc)
+	addTool(s, issues.CreateIssueTool, issues.CreateIssueHandleFunc)
+	addTool(s, issues.GetIssueDetailTool, issues.GetIssueDetailHandleFunc)
+	addTool(s, issues.UpdateIssueTool, issues.UpdateIssueHandleFunc)
+	addTool(s, issues.CommentIssueTool, issues.CommentIssueHandleFunc)
+	addTool(s, issues.ListIssueCommentsTool, issues.ListIssueCommentsHandleFunc)
+
+	// Repositories
+	addTool(s, repository.ListRepositoriesTool, repository.ListRepositoriesHandleFunc)
+	addTool(s, repository.CreateRepositoryTool, repository.CreateRepositoryHandleFunc)
+	addTool(s, repository.CreateReleaseTool, repository.CreateReleaseHandleFunc)
+	addTool(s, repository.ListReleasesTool, repository.ListReleasesHandleFunc)
+
+	// Pulls
+	addTool(s, pulls.ListEntPullsTool, pulls.ListEntPullsHandleFunc)
+	addTool(s, pulls.CreateEntPullTool, pulls.CreateEntPullHandleFunc)
+	addTool(s, pulls.GetEntPullDetailTool, pulls.GetPullDetailHandleFunc)
+	addTool(s, pulls.GetPullDiffTool, pulls.GetPullDiffHandleFunc)
+	addTool(s, pulls.CommentPullTool, pulls.CommentPullHandleFunc)
+	addTool(s, pulls.ListPullCommentsTool, pulls.ListPullCommentsHandleFunc)
+	addTool(s, pulls.MergePullTool, pulls.MergePullHandleFunc)
+	addTool(s, pulls.UpdatePullTool, pulls.UpdatePullHandleFunc)
+
+	// Enterprises
+	addTool(s, enterprises.ListEnterprisesTool, enterprises.ListEnterprisesHandleFunc)
+
+	// Labels
+	addTool(s, labels.ListEnterpriseLabelsTool, labels.ListEnterpriseLabelsHandleFunc)
+
+	// IssueTypes
+	addTool(s, issue_types.ListIssueTypesTool, issue_types.ListIssueTypesHandleFunc)
+
+	// IssueStates
+	addTool(s, issue_states.ListIssueTypeStatesTool, issue_states.ListIssueTypeStatesHandleFunc)
+
+	//Users
+	addTool(s, user.GetUserInfoTool, user.GetUserInfoHandleFunc)
+
+	// Programs
+	addTool(s, programs.ListProgramsTool, programs.ListProgramsHandleFunc)
+
+	// ScrumSprints
+	addTool(s, scrum_sprints.CreateScrumSprintTool, scrum_sprints.CreateScrumSprintHandleFunc)
+	addTool(s, scrum_sprints.ListScrumSprintsTool, scrum_sprints.ListScrumSprintsHandleFunc)
+
+	// ScrumVersions
+	addTool(s, scrum_versions.ListScrumVersionsTool, scrum_versions.ListScrumVersionsHandleFunc)
+
+	// Members
+	addTool(s, members.ListEntMembersTool, members.ListEntMembersHandleFunc)
+
+	// Groups
+	addTool(s, groups.ListEntGroupsTool, groups.ListEntGroupsHandleFunc)
+}
 
 func getDisabledToolsets() []string {
 	if disabledToolsetsFlag == "" {
@@ -113,13 +147,25 @@ func getDisabledToolsets() []string {
 	return tools
 }
 
+func getEnabledToolsets() []string {
+	if enabledToolsetsFlag == "" {
+		enabledToolsetsFlag = os.Getenv("ENABLED_TOOLSETS")
+	}
+	if enabledToolsetsFlag == "" {
+		return nil
+	}
+	tools := strings.Split(enabledToolsetsFlag, ",")
+	for i := range tools {
+		tools[i] = strings.TrimSpace(tools[i])
+	}
+	return tools
+}
+
 func run(transport, addr string) error {
 	s := newMCPServer()
-	addTools(s)
 
-	if disabledTools := getDisabledToolsets(); len(disabledTools) > 0 {
-		s.DeleteTools(disabledTools...)
-	}
+	addTools(s)
+	disableTools(s)
 
 	switch transport {
 	case "stdio":
@@ -162,6 +208,7 @@ func main() {
 	flag.StringVar(&transport, "transport", "stdio", "Transport type (stdio or sse)")
 	flag.StringVar(&addr, "sse-address", "localhost:8000", "The host and port to start the sse server on")
 	flag.StringVar(&disabledToolsetsFlag, "disabled-toolsets", "", "Comma-separated list of tools to disable")
+	flag.StringVar(&enabledToolsetsFlag, "enabled-toolsets", "", "Comma-separated list of tools to enable (if specified, only these tools will be available)")
 	flag.Parse()
 
 	if showVersion {

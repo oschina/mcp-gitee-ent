@@ -7,6 +7,8 @@ Gitee Enterprise MCP Server is a Model Context Protocol (MCP) server implementat
 - Interact with Gitee Enterprise repositories, issues, pull requests
 - Support for enterprise-level operations and management
 - Configurable API base URL to support different Gitee Enterprise instances
+- Support for SSE and Stdio transport
+- Dynamic toolset enable/disable
 
 <Details>
 <summary><b>Scenario Example</b></summary>
@@ -85,6 +87,8 @@ Config example:
 - `-version`: Show version information
 - `-transport`: Transport type (stdio or sse, default: stdio)
 - `-sse-address`: The host and port to start the SSE server on (default: localhost:8000)
+- `--enabled-toolsets`: Comma-separated list of tools to enable (if specified, only these tools will be enabled)
+- `--disabled-toolsets`: Comma-separated list of tools to disable
 
 ### Environment Variables
 
@@ -92,10 +96,26 @@ You can also configure the server using environment variables:
 
 - `GITEE_ENT_MCP_ACCESS_TOKEN`: Gitee MCP ent access token
 - `GITEE_ENT_API_BASE`: Gitee ENT API base URL
+- `ENABLED_TOOLSETS`: Comma-separated list of tools to enable
+- `DISABLED_TOOLSETS`: Comma-separated list of tools to disable
 
-## License
+### Toolset Management
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for more details.
+Toolset management supports two modes:
+
+1. Enable specified tools (whitelist mode):
+   - Use `--enabled-toolsets` parameter or `ENABLED_TOOLSETS` environment variable
+   - Specify after, only listed tools will be enabled, others will be disabled
+   - Example: `--enabled-toolsets="update_enterprise_issue,list_enterprise_repositories"`
+
+2. Disable specified tools (blacklist mode):
+   - Use `--disabled-toolsets` parameter or `DISABLED_TOOLSETS` environment variable
+   - Specify after, listed tools will be disabled, others will be enabled
+   - Example: `--disabled-toolsets="update_enterprise_issue,list_enterprise_repositories"`
+
+Note:
+- If both `enabled-toolsets` and `disabled-toolsets` are specified, `enabled-toolsets` takes precedence
+- Tool names are case-sensitive
 
 ## Available Tools
 
@@ -132,7 +152,6 @@ The server provides various tools for interacting with Gitee Enterprise:
 | **list_scrum_versions**  | Program        | List Scrum Versions |
 | **list_issue_types**     | Issue Type   | List issue types |
 | **list_issue_type_states** | Issue State | List issue states |
-
 
 ## Contribution
 

@@ -1,55 +1,53 @@
-# Gitee Enterprise MCP Server
+# Gitee 企业版 MCP 服务器
 
-Gitee Enterprise MCP Server 是 Gitee Enterprise 的模型上下文协议（Model Context Protocol，MCP）服务器实现。它提供了一系列与 Gitee Enterprise API 交互的工具，使 AI 助手能够管理企业仓库、Issue、Pull Request 以及项目管理相关能力等。
+Gitee 企业版 MCP 服务器是一个用于 Gitee 企业版的模型上下文协议（MCP）服务器实现。它提供了一套工具集，用于与 Gitee 企业版 API 交互，使 AI 助手能够管理企业仓库、问题、拉取请求等。
 
-## 功能特点
+## 功能特性
 
-- 与 Gitee Enterprise 仓库、Issue、Pull Request 等资源进行交互
+- 与 Gitee 企业版仓库、问题、拉取请求交互
 - 支持企业级操作和管理
-- 可配置的 API BASE URL，支持不同的 Gitee Enterprise 实例
+- 可配置的 API 基础 URL，支持不同的 Gitee 企业版实例
+- 支持 SSE 和 Stdio 两种传输方式
+- 支持动态启用/禁用工具集
 
-<details>
+<Details>
 <summary><b>场景示例</b></summary>
 
-1. 获取特定企业 Issues
+1. 获取特定企业的问题
    ![get_issues](./docs/images/get_issues.png)
-2. 完善需求内容
+2. 改进问题内容
    ![update_issue](./docs/images/update_issue.png)
-3. 拆分子任务
+3. 划分子任务
    ![create_sup_issues](./docs/images/create_sub_issues.png)
-4. 创建PR/审查PR
+4. 创建 PR/评审 PR
    ![create_pr_and_review](./docs/images/pr_review.png)
 </details>
-
 
 ## 安装
 
 ### 前提条件
 
 - Go 1.23.0 或更高版本
-- 具有适当权限的 MCP 令牌，[前往获取](https://gitee.com/profile/mcp_gitee_ent_access_tokens)
+- MCP 令牌，[前往获取](https://gitee.com/profile/mcp_gitee_ent_access_tokens)
 
-### 从源代码构建
+### 从源码构建
 
 1. 克隆仓库：
-
    ```bash
    git clone https://gitee.com/oschina/mcp-gitee-ent.git
    cd mcp-gitee-ent
    ```
-2. 构建项目：
 
+2. 构建项目：
    ```bash
    make build
    ```
+   将 ./bin/mcp-gitee-ent 移动到 PATH 环境变量中
 
-   将 ./bin/mcp-gitee-ent 移动至系统环境变量
-
-### 使用 go install 安装
-
-```bash
+### 使用 go install
+   ```bash
    go install gitee.com/oschina/mcp-gitee-ent@latest
-```
+   ```
 
 ## 使用方法
 
@@ -59,8 +57,7 @@ Gitee Enterprise MCP Server 是 Gitee Enterprise 的模型上下文协议（Mode
 mcp-gitee-ent --version
 ```
 
-### MCP Hosts 配置
-
+### MCP 主机配置
 <div align="center">
   <a href="docs/install/claude.md" title="Claude"><img src="docs/install/logos/Claude.png" width=80 height=80></a>
   <a href="docs/install/cursor.md" title="Cursor"><img src="docs/install/logos/Cursor.png" width=80 height=80></a>
@@ -69,7 +66,6 @@ mcp-gitee-ent --version
 </div>
 
 配置示例：
-
 ```json
 {
   "mcpServers": {
@@ -86,26 +82,44 @@ mcp-gitee-ent --version
 
 ### 命令行选项
 
-- `-token`：访问令牌
-- `-api-base`：Gitee ent API base URL（默认：https://api.gitee.com/enterprises）
-- `-version`：显示版本信息
-- `-transport`：传输类型（stdio 或 sse，默认：stdio）
-- `-sse-address`：启动 SSE 服务器的主机和端口（默认：localhost:8000）
+- `-token`: 访问令牌
+- `-api-base`: Gitee 企业版 API 基础 URL（默认：https://api.gitee.com/enterprises）
+- `-version`: 显示版本信息
+- `-transport`: 传输类型（stdio 或 sse，默认：stdio）
+- `-sse-address`: SSE 服务器的地址和端口（默认：localhost:8000）
+- `--enabled-toolsets`: 逗号分隔的要启用的工具列表（如果指定，则只启用这些工具）
+- `--disabled-toolsets`: 逗号分隔的要禁用的工具列表
 
 ### 环境变量
 
-您也可以使用环境变量配置服务器：
+你也可以使用环境变量来配置服务器：
 
-- `GITEE_ENT_MCP_ACCESS_TOKEN`：Gitee MCP ent 访问令牌
-- `GITEE_ENT_API_BASE`：Gitee ent API base URL
+- `GITEE_ENT_MCP_ACCESS_TOKEN`: Gitee MCP 企业版访问令牌
+- `GITEE_ENT_API_BASE`: Gitee 企业版 API 基础 URL
+- `ENABLED_TOOLSETS`: 逗号分隔的要启用的工具列表
+- `DISABLED_TOOLSETS`: 逗号分隔的要禁用的工具列表
 
-## 许可证
+### 工具集管理
 
-本项目采用 MIT 许可证。有关更多详细信息，请参阅 [LICENSE](LICENSE) 文件。
+工具集管理支持两种模式：
+
+1. 启用指定工具（白名单模式）：
+   - 使用 `--enabled-toolsets` 参数或 `ENABLED_TOOLSETS` 环境变量
+   - 指定后，只有列出的工具会被启用，其他工具都会被禁用
+   - 例如：`--enabled-toolsets="update_enterprise_issue,list_enterprise_repositories"`
+
+2. 禁用指定工具（黑名单模式）：
+   - 使用 `--disabled-toolsets` 参数或 `DISABLED_TOOLSETS` 环境变量
+   - 指定后，列出的工具会被禁用，其他工具保持启用
+   - 例如：`--disabled-toolsets="update_enterprise_issue,list_enterprise_repositories"`
+
+注意：
+- 如果同时指定了 `enabled-toolsets` 和 `disabled-toolsets`，则 `enabled-toolsets` 优先
+- 工具名称区分大小写
 
 ## 可用工具
 
-服务器提供了各种与 Gitee Enterprise 交互的工具：
+服务器提供了多种工具用于与 Gitee 企业版交互：
 
 | 工具                                 | 类别           | 描述          |
 |------------------------------------|--------------|-------------|
@@ -141,11 +155,11 @@ mcp-gitee-ent --version
 
 ## 贡献
 
-我们欢迎开源社区的贡献！如果您想为这个项目做出贡献，请按照以下指南操作：
+我们欢迎开源社区的贡献！如果你想为这个项目做出贡献，请遵循以下指南：
 
-1. Fork 这个仓库。
-2. 为您的功能或 bug 修复创建一个新分支。
-3. 进行更改，并确保代码有良好的文档。
-4. 提交一个 pull request，并附上清晰的更改描述。
+1. Fork 仓库。
+2. 为你的功能或错误修复创建新分支。
+3. 进行更改并确保代码有良好的文档记录。
+4. 提交一个清晰的描述你的更改的拉取请求。
 
-更多信息，请参阅 [CONTRIBUTING](CONTRIBUTING.md) 文件。
+更多信息，请参考 [CONTRIBUTING](CONTRIBUTING.md) 文件。

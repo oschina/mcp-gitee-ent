@@ -1,0 +1,14 @@
+{
+  "name": "@gitee/mcp-gitee-ent-linux-amd64",
+  "version": "0.1.3",
+  "description": "Model Context Protocol (MCP) server for Gitee Enterprise",
+  "os": [
+    "linux"
+  ],
+  "cpu": [
+    "x64"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
+}

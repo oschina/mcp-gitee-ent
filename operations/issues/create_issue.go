@@ -116,7 +116,7 @@ var CreateIssueTool = mcp.NewTool(CreateIssue,
 	),
 )
 
-func CreateIssueHandleFunc(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func CreateIssueHandleFunc(ctx context.Context, request mcp.CallToolRequest, opts ...utils.Option) (*mcp.CallToolResult, error) {
 	// Validate required parameters
 	if checkResult, err := utils.CheckRequired(request.Params.Arguments, "title"); err != nil {
 		return checkResult, err
@@ -128,7 +128,8 @@ func CreateIssueHandleFunc(ctx context.Context, request mcp.CallToolRequest) (*m
 	}
 
 	apiUrl := fmt.Sprintf("/%d/issues", enterpriseID)
-	giteeClient := utils.NewGiteeClient("POST", apiUrl, utils.WithPayload(request.Params.Arguments))
+	opts = append(opts, utils.WithPayload(request.Params.Arguments))
+	giteeClient := utils.NewGiteeClient("POST", apiUrl, opts...)
 
 	data := types.BasicIssue{}
 	return giteeClient.HandleMCPResult(&data)

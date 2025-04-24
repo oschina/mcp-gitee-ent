@@ -7,7 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"gitee.com/oschina/mcp-gitee-ent/operations/types"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -51,34 +51,83 @@ func GetApiBase() string {
 	return DefaultApiBase
 }
 
+type Authorizer interface {
+	Authorize(req *http.Request) error
+}
+
+type BearerTokenAuthorizer struct{}
+
+func (b *BearerTokenAuthorizer) Authorize(req *http.Request) error {
+	accessToken := GetGiteeAccessToken()
+	if accessToken == "" {
+		return NewAuthError()
+	}
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+	return nil
+}
+
+type CookieAuthorizer struct {
+	Cookie string
+}
+
+func (c *CookieAuthorizer) Authorize(req *http.Request) error {
+	if c.Cookie == "" {
+		return NewAuthError()
+	}
+	req.Header.Set("Cookie", c.Cookie)
+	return nil
+}
+
 type GiteeClient struct {
-	Url       string
-	Method    string
-	Payload   interface{}
-	Headers   map[string]string
-	Response  *http.Response
-	parsedUrl *url.URL
-	Query     map[string]string
+	Url        string
+	Method     string
+	Payload    interface{}
+	Headers    map[string]string
+	Response   *http.Response
+	parsedUrl  *url.URL
+	Query      map[string]string
+	httpClient *http.Client
+	authorizer Authorizer
+	apiBase    string // Added apiBase field
 }
 
 type Option func(client *GiteeClient)
 
-func NewGiteeClient(method, urlString string, opts ...Option) *GiteeClient {
-	urlString = GetApiBase() + urlString
-	parsedUrl, err := url.Parse(urlString)
-	if err != nil {
-		panic(err)
-	}
-
+func NewGiteeClient(method, urlPath string, opts ...Option) *GiteeClient {
+	// Initialize client with defaults, including apiBase from GetApiBase()
 	client := &GiteeClient{
-		Method:    method,
-		Url:       parsedUrl.String(),
-		parsedUrl: parsedUrl,
+		Method:     method,
+		httpClient: http.DefaultClient,
+		authorizer: &BearerTokenAuthorizer{},
+		apiBase:    GetApiBase(),
 	}
 
+	// Apply options. This allows WithApiBase to override the default apiBase,
+	// and WithQuery to populate client.Query.
 	for _, opt := range opts {
 		opt(client)
 	}
+
+	// Construct the full URL using the client's potentially updated apiBase
+	fullURL := client.apiBase + urlPath
+	parsedUrl, err := url.Parse(fullURL)
+	if err != nil {
+		panic(fmt.Errorf("failed to parse URL '%s': %w", fullURL, err))
+	}
+	client.parsedUrl = parsedUrl // Store parsed URL object
+
+	// Apply query parameters from client.Query (populated by WithQuery option)
+	if client.Query != nil {
+		queryParams := client.parsedUrl.Query()
+		for k, v := range client.Query {
+			queryParams.Set(k, v)
+		}
+		client.parsedUrl.RawQuery = queryParams.Encode()
+	}
+
+	// Set the final URL string including any query parameters
+	client.Url = client.parsedUrl.String()
+
 	return client
 }
 
@@ -87,27 +136,23 @@ func WithQuery(query map[string]interface{}) Option {
 	return func(client *GiteeClient) {
 		parsedQuery := make(map[string]string)
 		if query != nil {
-			queryParams := client.parsedUrl.Query()
 			for k, v := range query {
 				parsedValue := ""
-				switch v.(type) {
+				switch val := v.(type) {
 				case string:
-					parsedValue = v.(string)
+					parsedValue = val
 				case int:
-					parsedValue = strconv.Itoa(v.(int))
+					parsedValue = strconv.Itoa(val)
 				case float32, float64:
-					parsedValue = fmt.Sprintf("%.f", v)
+					parsedValue = fmt.Sprintf("%v", val)
 				case bool:
-					parsedValue = strconv.FormatBool(v.(bool))
+					parsedValue = strconv.FormatBool(val)
 				}
 				if parsedValue != "" {
-					queryParams.Set(k, parsedValue)
 					parsedQuery[k] = parsedValue
 				}
 			}
-			client.parsedUrl.RawQuery = queryParams.Encode()
 		}
-		client.Url = client.parsedUrl.String()
 		client.Query = parsedQuery
 	}
 }
@@ -124,6 +169,31 @@ func WithHeaders(headers map[string]string) Option {
 	}
 }
 
+func WithHTTPClient(httpClient *http.Client) Option {
+	return func(client *GiteeClient) {
+		if httpClient != nil {
+			client.httpClient = httpClient
+		}
+	}
+}
+
+func WithAuthorizer(authorizer Authorizer) Option {
+	return func(client *GiteeClient) {
+		if authorizer != nil {
+			client.authorizer = authorizer
+		}
+	}
+}
+
+// WithApiBase now modifies the client's internal apiBase field
+func WithApiBase(url string) Option {
+	return func(client *GiteeClient) {
+		if url != "" {
+			client.apiBase = url
+		}
+	}
+}
+
 func (g *GiteeClient) SetHeaders(headers map[string]string) *GiteeClient {
 	g.Headers = headers
 	return g
@@ -131,28 +201,41 @@ func (g *GiteeClient) SetHeaders(headers map[string]string) *GiteeClient {
 
 func (g *GiteeClient) Do() (*GiteeClient, error) {
 	g.Response = nil
-	_payload, _ := json.Marshal(g.Payload)
-	req, err := http.NewRequest(g.Method, g.Url, bytes.NewReader(_payload))
+	var requestBody []byte
+	var err error
+
+	if g.Payload != nil {
+		requestBody, err = json.Marshal(g.Payload)
+		if err != nil {
+			return nil, NewInternalError(fmt.Errorf("failed to marshal payload: %w", err))
+		}
+	}
+
+	req, err := http.NewRequest(g.Method, g.Url, bytes.NewReader(requestBody))
 	if err != nil {
-		return nil, NewInternalError(err)
+		return nil, NewInternalError(fmt.Errorf("failed to create request: %w", err))
 	}
 
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("User-Agent", "mcp-gitee-ent "+Version+" Go/"+runtime.GOOS+"/"+runtime.GOARCH+"/"+runtime.Version())
 
-	accessToken := GetGiteeAccessToken()
-	if accessToken == "" {
-		return nil, NewAuthError()
-	}
-
-	req.Header.Set("Authorization", "Bearer "+accessToken)
-
 	for key, value := range g.Headers {
 		req.Header.Set(key, value)
 	}
 
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	// Apply authorization
+	if g.authorizer != nil {
+		if err := g.authorizer.Authorize(req); err != nil {
+			if IsAuthError(err) {
+				return nil, err
+			}
+			return nil, NewInternalError(fmt.Errorf("authorization failed: %w", err))
+		}
+	} else {
+		return nil, NewAuthError()
+	}
+
+	resp, err := g.httpClient.Do(req)
 	if err != nil {
 		return g, NewNetworkError(err)
 	}
@@ -161,7 +244,7 @@ func (g *GiteeClient) Do() (*GiteeClient, error) {
 
 	// 检查响应状态码
 	if !g.IsSuccess() {
-		body, _ := ioutil.ReadAll(resp.Body)
+		body, _ := io.ReadAll(resp.Body)
 		return g, NewAPIError(resp.StatusCode, body)
 	}
 
@@ -192,7 +275,7 @@ func (g *GiteeClient) IsFail() bool {
 }
 
 func (g *GiteeClient) GetRespBody() ([]byte, error) {
-	return ioutil.ReadAll(g.Response.Body)
+	return io.ReadAll(g.Response.Body)
 }
 
 func (g *GiteeClient) HandleMCPResult(object any) (*mcp.CallToolResult, error) {

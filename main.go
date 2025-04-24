@@ -31,6 +31,16 @@ var (
 	enabledToolsetsFlag  string
 )
 
+
+// wrapOptionHandler creates a standard ToolHandlerFunc from an OptionHandlerFunc,
+// allowing predefined options to be passed during registration.
+func wrapOptionHandler(handler utils.OptionHandlerFunc, opts ...utils.Option) server.ToolHandlerFunc {
+	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		// Call the original handler, passing the captured options.
+		return handler(ctx, request, opts...)
+	}
+}
+
 func newMCPServer() *server.MCPServer {
 	return server.NewMCPServer(
 		"mcp-gitee-ent",
@@ -40,10 +50,10 @@ func newMCPServer() *server.MCPServer {
 	)
 }
 
-func addTool(s *server.MCPServer, tool mcp.Tool, handleFunc server.ToolHandlerFunc) {
+func addTool(s *server.MCPServer, tool mcp.Tool, handleFunc utils.OptionHandlerFunc) {
 	enabledToolsets := getEnabledToolsets()
 	if len(enabledToolsets) == 0 {
-		s.AddTool(tool, handleFunc)
+		s.AddTool(tool, wrapOptionHandler(handleFunc))
 		return
 	}
 
@@ -53,7 +63,7 @@ func addTool(s *server.MCPServer, tool mcp.Tool, handleFunc server.ToolHandlerFu
 
 	for _, keepTool := range enabledToolsets {
 		if tool.Name == keepTool {
-			s.AddTool(tool, handleFunc)
+			s.AddTool(tool, wrapOptionHandler(handleFunc))
 			return
 		}
 	}
@@ -74,7 +84,7 @@ func disableTools(s *server.MCPServer) {
 }
 
 func addTools(s *server.MCPServer) {
-	//Issues
+	// Issues
 	addTool(s, issues.ListIssuesTool, issues.ListIssuesHandleFunc)
 	addTool(s, issues.CreateIssueTool, issues.CreateIssueHandleFunc)
 	addTool(s, issues.GetIssueDetailTool, issues.GetIssueDetailHandleFunc)
@@ -104,23 +114,23 @@ func addTools(s *server.MCPServer) {
 	// Labels
 	addTool(s, labels.ListEnterpriseLabelsTool, labels.ListEnterpriseLabelsHandleFunc)
 
-	// IssueTypes
+	// Issue Types
 	addTool(s, issue_types.ListIssueTypesTool, issue_types.ListIssueTypesHandleFunc)
 
-	// IssueStates
+	// Issue States
 	addTool(s, issue_states.ListIssueTypeStatesTool, issue_states.ListIssueTypeStatesHandleFunc)
 
-	//Users
+	// Users
 	addTool(s, user.GetUserInfoTool, user.GetUserInfoHandleFunc)
 
 	// Programs
 	addTool(s, programs.ListProgramsTool, programs.ListProgramsHandleFunc)
 
-	// ScrumSprints
+	// Scrum Sprints
 	addTool(s, scrum_sprints.CreateScrumSprintTool, scrum_sprints.CreateScrumSprintHandleFunc)
 	addTool(s, scrum_sprints.ListScrumSprintsTool, scrum_sprints.ListScrumSprintsHandleFunc)
 
-	// ScrumVersions
+	// Scrum Versions
 	addTool(s, scrum_versions.ListScrumVersionsTool, scrum_versions.ListScrumVersionsHandleFunc)
 
 	// Members

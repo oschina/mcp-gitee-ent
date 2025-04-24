@@ -54,9 +54,9 @@ var CreateScrumSprintTool = mcp.NewTool(CreateScrumSprint,
 	),
 )
 
-func CreateScrumSprintHandleFunc(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func CreateScrumSprintHandleFunc(ctx context.Context, request mcp.CallToolRequest, opts ...utils.Option) (*mcp.CallToolResult, error) {
 	// Validate required parameters
-	if checkResult, err := utils.CheckRequired(request.Params.Arguments, "program_id", "title", "started_at", "finished_at"); err != nil {
+	if checkResult, err := utils.CheckRequired(request.Params.Arguments, "program_id", "title", "assignee_id", "started_at", "finished_at"); err != nil {
 		return checkResult, err
 	}
 	enterpriseIDArg := request.Params.Arguments["enterprise_id"]
@@ -71,8 +71,10 @@ func CreateScrumSprintHandleFunc(ctx context.Context, request mcp.CallToolReques
 	}
 
 	apiUrl := fmt.Sprintf("/%d/programs/%d/scrum_sprints", enterpriseID, programID)
-	giteeClient := utils.NewGiteeClient("POST", apiUrl, utils.WithPayload(request.Params.Arguments))
+	opts = append(opts, utils.WithPayload(request.Params.Arguments))
+	giteeClient := utils.NewGiteeClient("POST", apiUrl, opts...)
 
 	data := types.ScrumSprint{}
 	return giteeClient.HandleMCPResult(&data)
 }
+

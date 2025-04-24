@@ -42,11 +42,11 @@ var CreateRepositoryTool = mcp.NewTool(CreateEnterpriseProject,
 	),
 	mcp.WithNumber(
 		"project_public",
-		mcp.Description("Public visibility (0: Private, 1: Public)"),
+		mcp.Description("Whether public: 0: Private, 1: Public, 2: Internal Open"),
 	),
 	mcp.WithNumber(
 		"project_outsourced",
-		mcp.Description("Outsourced status (0: No, 1: Yes)"),
+		mcp.Description("Whether outsourced: 0: No, 1: Yes"),
 	),
 	mcp.WithString(
 		"project_program_ids",
@@ -74,7 +74,7 @@ var CreateRepositoryTool = mcp.NewTool(CreateEnterpriseProject,
 	),
 )
 
-func CreateRepositoryHandleFunc(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func CreateRepositoryHandleFunc(ctx context.Context, request mcp.CallToolRequest, opts ...utils.Option) (*mcp.CallToolResult, error) {
 	if checkResult, err := utils.CheckRequired(request.Params.Arguments, "project_name", "project_namespace_path", "project_path"); err != nil {
 		return checkResult, err
 	}
@@ -87,8 +87,10 @@ func CreateRepositoryHandleFunc(ctx context.Context, request mcp.CallToolRequest
 
 	apiUrl := fmt.Sprintf("/%d/projects", enterpriseID)
 	payload := utils.ConvertToHash(request.Params.Arguments, "project", "name", "namespace_path", "path", "description", "public", "outsourced", "program_ids", "member_ids")
-	giteeClient := utils.NewGiteeClient("POST", apiUrl, utils.WithPayload(payload))
+	opts = append(opts, utils.WithPayload(payload))
+	giteeClient := utils.NewGiteeClient("POST", apiUrl, opts...)
 
 	data := types.Repository{}
 	return giteeClient.HandleMCPResult(&data)
 }
+

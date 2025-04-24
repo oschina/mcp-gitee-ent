@@ -13,11 +13,12 @@ const (
 
 var GetUserInfoTool = mcp.NewTool(GetUserInfo, mcp.WithDescription("Get user info"))
 
-func GetUserInfoHandleFunc(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func GetUserInfoHandleFunc(ctx context.Context, request mcp.CallToolRequest, opts ...utils.Option) (*mcp.CallToolResult, error) {
 	apiUrl := "/users"
 
-	giteeClient := utils.NewGiteeClient("GET", apiUrl)
+	giteeClient := utils.NewGiteeClient("GET", apiUrl, opts...)
 
 	data := types.UserInfo{}
 	return giteeClient.HandleMCPResult(&data)
 }
+

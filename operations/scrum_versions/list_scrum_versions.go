@@ -45,7 +45,7 @@ var ListScrumVersionsTool = mcp.NewTool(ListScrumVersions,
 	),
 )
 
-func ListScrumVersionsHandleFunc(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func ListScrumVersionsHandleFunc(ctx context.Context, request mcp.CallToolRequest, opts ...utils.Option) (*mcp.CallToolResult, error) {
 	// Validate required parameters
 	if checkResult, err := utils.CheckRequired(request.Params.Arguments, "program_id"); err != nil {
 		return checkResult, err
@@ -63,8 +63,10 @@ func ListScrumVersionsHandleFunc(ctx context.Context, request mcp.CallToolReques
 	}
 
 	apiUrl := fmt.Sprintf("/%d/programs/%d/scrum_versions", enterpriseID, programID)
-	giteeClient := utils.NewGiteeClient("GET", apiUrl, utils.WithQuery(request.Params.Arguments))
+	opts = append(opts, utils.WithQuery(request.Params.Arguments))
+	giteeClient := utils.NewGiteeClient("GET", apiUrl, opts...)
 
 	data := types.PagedResponse[types.ScrumVersion]{}
 	return giteeClient.HandleMCPResult(&data)
 }
+

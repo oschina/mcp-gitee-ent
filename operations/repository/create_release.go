@@ -52,7 +52,7 @@ var CreateReleaseTool = mcp.NewTool(CreateRelease,
 	),
 )
 
-func CreateReleaseHandleFunc(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func CreateReleaseHandleFunc(ctx context.Context, request mcp.CallToolRequest, opts ...utils.Option) (*mcp.CallToolResult, error) {
 	if checkResult, err := utils.CheckRequired(request.Params.Arguments, "project_id", "release_tag_version", "release_title", "release_description"); err != nil {
 		return checkResult, err
 	}
@@ -70,8 +70,10 @@ func CreateReleaseHandleFunc(ctx context.Context, request mcp.CallToolRequest) (
 	apiUrl := fmt.Sprintf("/%d/projects/%s/releases", enterpriseID, url.QueryEscape(projectIDArg.(string)))
 
 	payload := utils.ConvertToHash(request.Params.Arguments, "release", "tag_version", "title", "ref", "description", "release_type")
-	giteeClient := utils.NewGiteeClient("POST", apiUrl, utils.WithPayload(payload))
+	opts = append(opts, utils.WithPayload(payload))
+	giteeClient := utils.NewGiteeClient("POST", apiUrl, opts...)
 
 	data := types.ReleaseDetail{}
 	return giteeClient.HandleMCPResult(&data)
 }
+

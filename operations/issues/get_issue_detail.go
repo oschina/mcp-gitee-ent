@@ -27,7 +27,7 @@ var GetIssueDetailTool = mcp.NewTool(GetIssueDetail,
 	),
 )
 
-func GetIssueDetailHandleFunc(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func GetIssueDetailHandleFunc(ctx context.Context, request mcp.CallToolRequest, opts ...utils.Option) (*mcp.CallToolResult, error) {
 	// Validate required parameters
 	if checkResult, err := utils.CheckRequired(request.Params.Arguments, "issue_id"); err != nil {
 		return checkResult, err
@@ -41,9 +41,11 @@ func GetIssueDetailHandleFunc(ctx context.Context, request mcp.CallToolRequest) 
 	request.Params.Arguments["qt"] = "ident"
 
 	apiUrl := fmt.Sprintf("/%d/issues/%s", enterpriseID, issueID)
-	giteeClient := utils.NewGiteeClient("GET", apiUrl, utils.WithQuery(request.Params.Arguments))
+	opts = append(opts, utils.WithQuery(request.Params.Arguments))
+	giteeClient := utils.NewGiteeClient("GET", apiUrl, opts...)
 
 	data := types.IssueDetail{}
 
 	return giteeClient.HandleMCPResult(&data)
 }
+

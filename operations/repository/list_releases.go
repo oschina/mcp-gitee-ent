@@ -37,7 +37,7 @@ var ListReleasesTool = mcp.NewTool(ListReleases,
 	),
 )
 
-func ListReleasesHandleFunc(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func ListReleasesHandleFunc(ctx context.Context, request mcp.CallToolRequest, opts ...utils.Option) (*mcp.CallToolResult, error) {
 	// Validate required parameters
 	if checkResult, err := utils.CheckRequired(request.Params.Arguments, "project_id"); err != nil {
 		return checkResult, err
@@ -55,8 +55,10 @@ func ListReleasesHandleFunc(ctx context.Context, request mcp.CallToolRequest) (*
 
 	apiUrl := fmt.Sprintf("/%d/projects/%s/releases", enterpriseID, url.QueryEscape(projectIDArg.(string)))
 
-	giteeClient := utils.NewGiteeClient("GET", apiUrl, utils.WithQuery(request.Params.Arguments))
+	opts = append(opts, utils.WithQuery(request.Params.Arguments))
+	giteeClient := utils.NewGiteeClient("GET", apiUrl, opts...)
 
 	data := types.PagedResponse[types.ReleaseDetail]{}
 	return giteeClient.HandleMCPResult(&data)
 }
+

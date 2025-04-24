@@ -42,7 +42,7 @@ var ListPullCommentsTool = mcp.NewTool(ListEntPullComments,
 	),
 )
 
-func ListPullCommentsHandleFunc(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func ListPullCommentsHandleFunc(ctx context.Context, request mcp.CallToolRequest, opts ...utils.Option) (*mcp.CallToolResult, error) {
 	// Validate required parameters
 	if checkResult, err := utils.CheckRequired(request.Params.Arguments, "project_id", "pull_request_id"); err != nil {
 		return checkResult, err
@@ -65,8 +65,10 @@ func ListPullCommentsHandleFunc(ctx context.Context, request mcp.CallToolRequest
 	if !utils.IsAllDigits(projectIDArg.(string)) {
 		request.Params.Arguments["qt"] = "path"
 	}
-	giteeClient := utils.NewGiteeClient("GET", apiUrl, utils.WithQuery(request.Params.Arguments))
+	opts = append(opts, utils.WithQuery(request.Params.Arguments))
+	giteeClient := utils.NewGiteeClient("GET", apiUrl, opts...)
 
 	data := types.PagedResponse[types.PullComment]{}
 	return giteeClient.HandleMCPResult(&data)
 }
+

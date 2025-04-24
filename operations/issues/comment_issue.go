@@ -32,7 +32,7 @@ var CommentIssueTool = mcp.NewTool(CommentIssue,
 	),
 )
 
-func CommentIssueHandleFunc(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func CommentIssueHandleFunc(ctx context.Context, request mcp.CallToolRequest, opts ...utils.Option) (*mcp.CallToolResult, error) {
 	// Validate required parameters
 	if checkResult, err := utils.CheckRequired(request.Params.Arguments, "issue_id", "body"); err != nil {
 		return checkResult, err
@@ -47,8 +47,10 @@ func CommentIssueHandleFunc(ctx context.Context, request mcp.CallToolRequest) (*
 	request.Params.Arguments["qt"] = "ident"
 
 	apiUrl := fmt.Sprintf("/%d/issues/%s/notes", enterpriseID, issueID)
-	giteeClient := utils.NewGiteeClient("POST", apiUrl, utils.WithPayload(request.Params.Arguments))
+	opts = append(opts, utils.WithPayload(request.Params.Arguments))
+	giteeClient := utils.NewGiteeClient("POST", apiUrl, opts...)
 
 	data := types.IssueComment{}
 	return giteeClient.HandleMCPResult(&data)
 }
+

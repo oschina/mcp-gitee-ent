@@ -46,7 +46,7 @@ var ListIssueTypeStatesTool = mcp.NewTool(ListIssueTypeStates,
 	),
 )
 
-func ListIssueTypeStatesHandleFunc(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func ListIssueTypeStatesHandleFunc(ctx context.Context, request mcp.CallToolRequest, opts ...utils.Option) (*mcp.CallToolResult, error) {
 	if checkResult, err := utils.CheckRequired(request.Params.Arguments, "issue_type_id"); err != nil {
 		return checkResult, err
 	}
@@ -63,7 +63,9 @@ func ListIssueTypeStatesHandleFunc(ctx context.Context, request mcp.CallToolRequ
 	}
 
 	apiUrl := fmt.Sprintf("/%d/issue_types/%d/issue_states", enterpriseID, issueTypeID)
-	giteeClient := utils.NewGiteeClient("GET", apiUrl, utils.WithQuery(request.Params.Arguments))
+	opts = append(opts, utils.WithQuery(request.Params.Arguments))
+	giteeClient := utils.NewGiteeClient("GET", apiUrl, opts...)
 	data := types.PagedResponse[types.IssueState]{}
 	return giteeClient.HandleMCPResult(&data)
 }
+

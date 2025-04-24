@@ -67,7 +67,7 @@ var ListEntMembersTool = mcp.NewTool(ListEntMembers,
 	),
 )
 
-func ListEntMembersHandleFunc(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func ListEntMembersHandleFunc(ctx context.Context, request mcp.CallToolRequest, opts ...utils.Option) (*mcp.CallToolResult, error) {
 	// Validate required parameters
 	if checkResult, err := utils.CheckRequired(request.Params.Arguments); err != nil {
 		return checkResult, err
@@ -79,9 +79,11 @@ func ListEntMembersHandleFunc(ctx context.Context, request mcp.CallToolRequest) 
 	}
 
 	apiUrl := fmt.Sprintf("/%d/members", enterpriseID)
-	giteeClient := utils.NewGiteeClient("GET", apiUrl, utils.WithQuery(request.Params.Arguments))
+	opts = append(opts, utils.WithQuery(request.Params.Arguments))
+	giteeClient := utils.NewGiteeClient("GET", apiUrl, opts...)
 
 	// Handle response
 	data := types.PagedResponse[types.EnterpriseMember]{}
 	return giteeClient.HandleMCPResult(&data)
 }
+

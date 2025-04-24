@@ -62,7 +62,7 @@ var CreateEntPullTool = mcp.NewTool(CreateEntPull,
 	),
 )
 
-func CreateEntPullHandleFunc(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func CreateEntPullHandleFunc(ctx context.Context, request mcp.CallToolRequest, opts ...utils.Option) (*mcp.CallToolResult, error) {
 	// Validate required parameters
 	if checkResult, err := utils.CheckRequired(request.Params.Arguments, "project_id", "source_branch", "target_branch", "title"); err != nil {
 		return checkResult, err
@@ -79,8 +79,10 @@ func CreateEntPullHandleFunc(ctx context.Context, request mcp.CallToolRequest) (
 	if !utils.IsAllDigits(projectIDArg.(string)) {
 		request.Params.Arguments["qt"] = "path"
 	}
-	giteeClient := utils.NewGiteeClient("POST", apiUrl, utils.WithPayload(request.Params.Arguments))
+	opts = append(opts, utils.WithPayload(request.Params.Arguments))
+	giteeClient := utils.NewGiteeClient("POST", apiUrl, opts...)
 
 	data := types.PullDetail{}
 	return giteeClient.HandleMCPResult(&data)
 }
+

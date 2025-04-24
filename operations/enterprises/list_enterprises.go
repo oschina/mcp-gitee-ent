@@ -16,11 +16,14 @@ var ListEnterprisesTool = mcp.NewTool(ListEnterprises,
 	mcp.WithDescription("List user's enterprises"),
 )
 
-func ListEnterprisesHandleFunc(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func ListEnterprisesHandleFunc(ctx context.Context, request mcp.CallToolRequest, opts ...utils.Option) (*mcp.CallToolResult, error) {
 	apiUrl := "/list"
-	giteeClient := utils.NewGiteeClient("GET", apiUrl, utils.WithPayload(request.Params.Arguments))
+
+	opts = append(opts, utils.WithPayload(request.Params.Arguments))
+	giteeClient := utils.NewGiteeClient("GET", apiUrl, opts...)
 
 	data := types.PagedResponse[types.BasicEnterprise]{}
 
 	return giteeClient.HandleMCPResult(&data)
 }
+

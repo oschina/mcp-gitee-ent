@@ -49,7 +49,7 @@ var UpdatePullTool = mcp.NewTool(UpdateEntPull,
 	),
 )
 
-func UpdatePullHandleFunc(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func UpdatePullHandleFunc(ctx context.Context, request mcp.CallToolRequest, opts ...utils.Option) (*mcp.CallToolResult, error) {
 	// Validate required parameters
 	if checkResult, err := utils.CheckRequired(request.Params.Arguments, "project_id", "pull_request_id"); err != nil {
 		return checkResult, err
@@ -71,8 +71,10 @@ func UpdatePullHandleFunc(ctx context.Context, request mcp.CallToolRequest) (*mc
 	}
 
 	apiUrl := fmt.Sprintf("/%d/projects/%s/pull_requests/%d", enterpriseID, url.QueryEscape(projectIDArg.(string)), pullRequestID)
-	giteeClient := utils.NewGiteeClient("PUT", apiUrl, utils.WithPayload(request.Params.Arguments))
+	opts = append(opts, utils.WithPayload(request.Params.Arguments))
+	giteeClient := utils.NewGiteeClient("PUT", apiUrl, opts...)
 
 	data := types.PullDetail{}
 	return giteeClient.HandleMCPResult(&data)
 }
+

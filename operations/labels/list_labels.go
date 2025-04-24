@@ -45,7 +45,7 @@ var ListEnterpriseLabelsTool = mcp.NewTool(ListEnterpriseLabels,
 	),
 )
 
-func ListEnterpriseLabelsHandleFunc(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+func ListEnterpriseLabelsHandleFunc(ctx context.Context, request mcp.CallToolRequest, opts ...utils.Option) (*mcp.CallToolResult, error) {
 	// Validate required parameters
 	if checkResult, err := utils.CheckRequired(request.Params.Arguments); err != nil {
 		return checkResult, err
@@ -57,8 +57,10 @@ func ListEnterpriseLabelsHandleFunc(ctx context.Context, request mcp.CallToolReq
 	}
 
 	apiUrl := fmt.Sprintf("/%d/labels", enterpriseID)
-	giteeClient := utils.NewGiteeClient("GET", apiUrl, utils.WithQuery(request.Params.Arguments))
+	opts = append(opts, utils.WithQuery(request.Params.Arguments))
+	giteeClient := utils.NewGiteeClient("GET", apiUrl, opts...)
 
 	data := types.PagedResponse[types.Label]{}
 	return giteeClient.HandleMCPResult(&data)
 }
+

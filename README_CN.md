@@ -23,7 +23,7 @@ Gitee 企业版 MCP 服务器是一个用于 Gitee 企业版的模型上下文�
    ![create_pr_and_review](./docs/images/pr_review.png)
 </details>
 
-## 安装
+## 安装（npx 启动可直接跳过该步骤）
 
 ### 前提条件
 
@@ -57,7 +57,7 @@ Gitee 企业版 MCP 服务器是一个用于 Gitee 企业版的模型上下文�
 mcp-gitee-ent --version
 ```
 
-### MCP 主机配置
+## MCP 主机配置
 <div align="center">
   <a href="docs/install/claude.md" title="Claude"><img src="docs/install/logos/Claude.png" width=80 height=80></a>
   <a href="docs/install/cursor.md" title="Cursor"><img src="docs/install/logos/Cursor.png" width=80 height=80></a>
@@ -66,10 +66,29 @@ mcp-gitee-ent --version
 </div>
 
 配置示例：
+- npx 启动
 ```json
 {
   "mcpServers": {
-    "gitee": {
+    "gitee-ent": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@gitee/mcp-gitee-ent@latest"
+      ],
+      "env": {
+         "GITEE_ENT_API_BASE": "https://api.gitee.com/enterprises",
+         "GITEE_ENT_MCP_ACCESS_TOKEN": "<your mcp ent access token>"
+      }
+    }
+  }
+}
+```
+- 可执行文件启动
+```json
+{
+  "mcpServers": {
+    "gitee-ent": {
       "command": "mcp-gitee-ent",
       "env": {
         "GITEE_ENT_API_BASE": "https://api.gitee.com/enterprises",

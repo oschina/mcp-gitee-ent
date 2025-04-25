@@ -23,7 +23,7 @@ Gitee Enterprise MCP Server is a Model Context Protocol (MCP) server implementat
    ![create_pr_and_review](./docs/images/pr_review.png)
 </details>
 
-## Installation
+## Installation(This step can be skipped directly when starting npx)
 
 ### Prerequisites
 
@@ -57,7 +57,7 @@ Check mcp-gitee-ent version:
 mcp-gitee-ent --version
 ```
 
-### MCP Hosts Configuration
+## MCP Hosts Configuration
 <div align="center">
   <a href="docs/install/claude.md" title="Claude"><img src="docs/install/logos/Claude.png" width=80 height=80></a>
   <a href="docs/install/cursor.md" title="Cursor"><img src="docs/install/logos/Cursor.png" width=80 height=80></a>
@@ -66,10 +66,29 @@ mcp-gitee-ent --version
 </div>
 
 Config example:
+- npx
 ```json
 {
   "mcpServers": {
-    "gitee": {
+    "gitee-ent": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@gitee/mcp-gitee-ent@latest"
+      ],
+      "env": {
+         "GITEE_ENT_API_BASE": "https://api.gitee.com/enterprises",
+         "GITEE_ENT_MCP_ACCESS_TOKEN": "<your mcp ent access token>"
+      }
+    }
+  }
+}
+```
+- executable
+```json
+{
+  "mcpServers": {
+    "gitee-ent": {
       "command": "mcp-gitee-ent",
       "env": {
         "GITEE_ENT_API_BASE": "https://api.gitee.com/enterprises",

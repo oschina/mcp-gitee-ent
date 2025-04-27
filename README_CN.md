@@ -102,11 +102,11 @@ mcp-gitee-ent --version
 
 ### 命令行选项
 
-- `-token`: 访问令牌
-- `-api-base`: Gitee 企业版 API 基础 URL（默认：https://api.gitee.com/enterprises）
-- `-version`: 显示版本信息
-- `-transport`: 传输类型（stdio 或 sse，默认：stdio）
-- `-sse-address`: SSE 服务器的地址和端口（默认：localhost:8000）
+- `--token`: 访问令牌
+- `--api-base`: Gitee 企业版 API 基础 URL（默认：https://api.gitee.com/enterprises）
+- `--version`: 显示版本信息
+- `--transport`: 传输类型（stdio 或 sse，默认：stdio）
+- `--sse-address`: SSE 服务器的地址和端口（默认：localhost:8000）
 - `--enabled-toolsets`: 逗号分隔的要启用的工具列表（如果指定，则只启用这些工具）
 - `--disabled-toolsets`: 逗号分隔的要禁用的工具列表
 

@@ -102,11 +102,11 @@ Config example:
 
 ### Command-line Options
 
-- `-token`: access token
-- `-api-base`: Gitee Ent API base URL (default: https://api.gitee.com/enterprises)
-- `-version`: Show version information
-- `-transport`: Transport type (stdio or sse, default: stdio)
-- `-sse-address`: The host and port to start the SSE server on (default: localhost:8000)
+- `--token`: access token
+- `--api-base`: Gitee Ent API base URL (default: https://api.gitee.com/enterprises)
+- `--version`: Show version information
+- `--transport`: Transport type (stdio or sse, default: stdio)
+- `--sse-address`: The host and port to start the SSE server on (default: localhost:8000)
 - `--enabled-toolsets`: Comma-separated list of tools to enable (if specified, only these tools will be enabled)
 - `--disabled-toolsets`: Comma-separated list of tools to disable
 

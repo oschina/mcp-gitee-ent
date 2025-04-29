@@ -1,0 +1,28 @@
+
+startCommand:
+  type: stdio
+  configSchema:
+    type: object
+    required:
+      - accessToken
+    properties:
+      accessToken:
+        type: string
+        description: Gitee Ent MCP Access Token
+      apiBase:
+        type: string
+        default: https://api.gitee.com/enterprises
+        description: Gitee Enterprise API Base URL
+  commandFunction:
+    |-
+    (config) => ({
+      command: '/app/mcp-gitee-ent',
+      args: ['--transport', 'stdio'],
+      env: {
+        GITEE_ENT_MCP_ACCESS_TOKEN: config.accessToken,
+        GITEE_ENT_API_BASE: config.apiBase || 'https://api.gitee.com/enterprises'
+      }
+    })
+  exampleConfig:
+    accessToken: dummy-token
+    apiBase: https://api.gitee.com/enterprises

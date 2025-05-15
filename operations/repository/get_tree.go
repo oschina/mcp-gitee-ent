@@ -3,10 +3,11 @@ package repository
 import (
 	"context"
 	"fmt"
+	"net/url"
+
 	"gitee.com/oschina/mcp-gitee-ent/operations/types"
 	"gitee.com/oschina/mcp-gitee-ent/utils"
 	"github.com/mark3labs/mcp-go/mcp"
-	"net/url"
 )
 
 const (
@@ -43,7 +44,11 @@ func GetRepoTreeHandleFunc(ctx context.Context, request mcp.CallToolRequest, opt
 		return mcp.NewToolResultError(err.Error()), err
 	}
 	projectIDArg := request.Params.Arguments["project_id"]
-	if !utils.IsAllDigits(projectIDArg.(string)) {
+	projectID, err := utils.SafelyConvertToString(projectIDArg)
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), err
+	}
+	if !utils.IsAllDigits(projectID) {
 		request.Params.Arguments["qt"] = "path"
 	}
 	ref, ok := request.Params.Arguments["ref"].(string)
@@ -51,7 +56,7 @@ func GetRepoTreeHandleFunc(ctx context.Context, request mcp.CallToolRequest, opt
 		return mcp.NewToolResultError("ref is invalid"), nil
 	}
 
-	apiUrl := fmt.Sprintf("/%d/projects/%s/tree/%s", enterpriseID, url.QueryEscape(projectIDArg.(string)), url.QueryEscape(ref))
+	apiUrl := fmt.Sprintf("/%d/projects/%s/tree/%s", enterpriseID, url.QueryEscape(projectID), url.QueryEscape(ref))
 
 	opts = append(opts, utils.WithQuery(request.Params.Arguments))
 	giteeClient := utils.NewGiteeClient("GET", apiUrl, opts...)

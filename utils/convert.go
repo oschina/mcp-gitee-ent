@@ -44,3 +44,28 @@ func SafelyConvertToInt(value interface{}) (int, error) {
 		return 0, NewParamError("number", fmt.Sprintf("unsupported type: %v", reflect.TypeOf(value)))
 	}
 }
+
+// SafelyConvertToString 尝试将各种类型安全地转换为 string
+// 支持 int, int32, int64, float32, float64, string, bool 类型的转换
+// 对于数字类型，直接转换为对应的字符串表示
+// 对于布尔值，转换为 "true" 或 "false"
+func SafelyConvertToString(value interface{}) (string, error) {
+	switch v := value.(type) {
+	case string:
+		return v, nil
+	case int:
+		return fmt.Sprintf("%d", v), nil
+	case int32:
+		return fmt.Sprintf("%d", v), nil
+	case int64:
+		return fmt.Sprintf("%d", v), nil
+	case float32:
+		return fmt.Sprintf("%g", v), nil
+	case float64:
+		return fmt.Sprintf("%g", v), nil
+	case bool:
+		return fmt.Sprintf("%t", v), nil
+	default:
+		return "", NewParamError("string", fmt.Sprintf("unsupported type: %v", reflect.TypeOf(value)))
+	}
+}

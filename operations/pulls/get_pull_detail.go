@@ -3,10 +3,11 @@ package pulls
 import (
 	"context"
 	"fmt"
+	"net/url"
+
 	"gitee.com/oschina/mcp-gitee-ent/operations/types"
 	"gitee.com/oschina/mcp-gitee-ent/utils"
 	"github.com/mark3labs/mcp-go/mcp"
-	"net/url"
 )
 
 const (
@@ -43,21 +44,24 @@ func GetPullDetailHandleFunc(ctx context.Context, request mcp.CallToolRequest, o
 		return mcp.NewToolResultError(err.Error()), err
 	}
 	projectIDArg := request.Params.Arguments["project_id"]
+	projectID, err := utils.SafelyConvertToString(projectIDArg)
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), err
+	}
 	pullRequestIDArg := request.Params.Arguments["pull_request_id"]
 	pullRequestID, err := utils.SafelyConvertToInt(pullRequestIDArg)
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), err
 	}
-	if !utils.IsAllDigits(projectIDArg.(string)) {
+	if !utils.IsAllDigits(projectID) {
 		request.Params.Arguments["qt"] = "path"
 	}
 	request.Params.Arguments["pr_qt"] = "iid"
 
-	apiUrl := fmt.Sprintf("/%d/projects/%s/pull_requests/%d", enterpriseID, url.QueryEscape(projectIDArg.(string)), pullRequestID)
+	apiUrl := fmt.Sprintf("/%d/projects/%s/pull_requests/%d", enterpriseID, url.QueryEscape(projectID), pullRequestID)
 	opts = append(opts, utils.WithQuery(request.Params.Arguments))
 	giteeClient := utils.NewGiteeClient("GET", apiUrl, opts...)
 
 	data := types.PullDetail{}
 	return giteeClient.HandleMCPResult(&data)
 }
-

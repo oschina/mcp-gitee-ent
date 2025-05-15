@@ -3,10 +3,11 @@ package repository
 import (
 	"context"
 	"fmt"
+	"net/url"
+
 	"gitee.com/oschina/mcp-gitee-ent/operations/types"
 	"gitee.com/oschina/mcp-gitee-ent/utils"
 	"github.com/mark3labs/mcp-go/mcp"
-	"net/url"
 )
 
 const (
@@ -49,11 +50,15 @@ func ListReleasesHandleFunc(ctx context.Context, request mcp.CallToolRequest, op
 		return mcp.NewToolResultError(err.Error()), err
 	}
 	projectIDArg := request.Params.Arguments["project_id"]
-	if !utils.IsAllDigits(projectIDArg.(string)) {
+	projectID, err := utils.SafelyConvertToString(projectIDArg)
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), err
+	}
+	if !utils.IsAllDigits(projectID) {
 		request.Params.Arguments["qt"] = "path"
 	}
 
-	apiUrl := fmt.Sprintf("/%d/projects/%s/releases", enterpriseID, url.QueryEscape(projectIDArg.(string)))
+	apiUrl := fmt.Sprintf("/%d/projects/%s/releases", enterpriseID, url.QueryEscape(projectID))
 
 	opts = append(opts, utils.WithQuery(request.Params.Arguments))
 	giteeClient := utils.NewGiteeClient("GET", apiUrl, opts...)
@@ -61,4 +66,3 @@ func ListReleasesHandleFunc(ctx context.Context, request mcp.CallToolRequest, op
 	data := types.PagedResponse[types.ReleaseDetail]{}
 	return giteeClient.HandleMCPResult(&data)
 }
-

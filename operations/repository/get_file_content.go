@@ -3,18 +3,19 @@ package repository
 import (
 	"context"
 	"fmt"
+	"net/url"
+
 	"gitee.com/oschina/mcp-gitee-ent/operations/types"
 	"gitee.com/oschina/mcp-gitee-ent/utils"
 	"github.com/mark3labs/mcp-go/mcp"
-	"net/url"
 )
 
 const (
-	GetFileContentToolName = "get_enterprise_repository_file_content"
+	GetFileContent = "get_enterprise_repository_file_content"
 )
 
 var GetFileContentTool = mcp.NewTool(
-	GetFileContentToolName,
+	GetFileContent,
 	mcp.WithDescription("Get the content of the specified file in the repository"),
 	mcp.WithNumber(
 		"enterprise_id",
@@ -33,7 +34,7 @@ var GetFileContentTool = mcp.NewTool(
 	),
 )
 
-func GetFileContentHandler(ctx context.Context, request mcp.CallToolRequest, opts ...utils.Option) (*mcp.CallToolResult, error) {
+func GetFileContentHandleFunc(ctx context.Context, request mcp.CallToolRequest, opts ...utils.Option) (*mcp.CallToolResult, error) {
 	// Validate required parameters
 	if checkResult, err := utils.CheckRequired(request.Params.Arguments, "project_id", "ref"); err != nil {
 		return checkResult, err
@@ -44,7 +45,11 @@ func GetFileContentHandler(ctx context.Context, request mcp.CallToolRequest, opt
 		return mcp.NewToolResultError(err.Error()), err
 	}
 	projectIDArg := request.Params.Arguments["project_id"]
-	if !utils.IsAllDigits(projectIDArg.(string)) {
+	projectID, err := utils.SafelyConvertToString(projectIDArg)
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), err
+	}
+	if !utils.IsAllDigits(projectID) {
 		request.Params.Arguments["qt"] = "path"
 	}
 	ref, ok := request.Params.Arguments["ref"].(string)
@@ -52,7 +57,7 @@ func GetFileContentHandler(ctx context.Context, request mcp.CallToolRequest, opt
 		return mcp.NewToolResultError("ref is invalid"), nil
 	}
 
-	apiUrl := fmt.Sprintf("/%d/projects/%s/blob/%s", enterpriseID, url.QueryEscape(projectIDArg.(string)), url.QueryEscape(ref))
+	apiUrl := fmt.Sprintf("/%d/projects/%s/blob/%s", enterpriseID, url.QueryEscape(projectID), url.QueryEscape(ref))
 
 	opts = append(opts, utils.WithQuery(request.Params.Arguments))
 	giteeClient := utils.NewGiteeClient("GET", apiUrl, opts...)

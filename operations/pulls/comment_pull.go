@@ -3,10 +3,11 @@ package pulls
 import (
 	"context"
 	"fmt"
+	"net/url"
+
 	"gitee.com/oschina/mcp-gitee-ent/operations/types"
 	"gitee.com/oschina/mcp-gitee-ent/utils"
 	"github.com/mark3labs/mcp-go/mcp"
-	"net/url"
 )
 
 const (
@@ -53,15 +54,19 @@ func CommentPullHandleFunc(ctx context.Context, request mcp.CallToolRequest, opt
 		return mcp.NewToolResultError(err.Error()), err
 	}
 	projectIDArg := request.Params.Arguments["project_id"]
+	projectID, err := utils.SafelyConvertToString(projectIDArg)
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), err
+	}
 	pullRequestIDArg := request.Params.Arguments["pull_request_id"]
 	pullRequestID, err := utils.SafelyConvertToInt(pullRequestIDArg)
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), err
 	}
 
-	apiUrl := fmt.Sprintf("/%d/projects/%s/pull_requests/%d/notes", enterpriseID, url.QueryEscape(projectIDArg.(string)), pullRequestID)
+	apiUrl := fmt.Sprintf("/%d/projects/%s/pull_requests/%d/notes", enterpriseID, url.QueryEscape(projectID), pullRequestID)
 	request.Params.Arguments["pr_qt"] = "iid"
-	if !utils.IsAllDigits(projectIDArg.(string)) {
+	if !utils.IsAllDigits(projectID) {
 		request.Params.Arguments["qt"] = "path"
 	}
 	opts = append(opts, utils.WithPayload(request.Params.Arguments))
@@ -70,4 +75,3 @@ func CommentPullHandleFunc(ctx context.Context, request mcp.CallToolRequest, opt
 	data := types.PullComment{}
 	return giteeClient.HandleMCPResult(&data)
 }
-

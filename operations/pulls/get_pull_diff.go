@@ -44,21 +44,24 @@ func GetPullDiffHandleFunc(ctx context.Context, request mcp.CallToolRequest, opt
 		return mcp.NewToolResultError(err.Error()), err
 	}
 	projectIDArg := request.Params.Arguments["project_id"]
+	projectID, err := utils.SafelyConvertToString(projectIDArg)
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), err
+	}
 	pullRequestIDArg := request.Params.Arguments["pull_request_id"]
 	pullRequestID, err := utils.SafelyConvertToInt(pullRequestIDArg)
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), err
 	}
-	if !utils.IsAllDigits(projectIDArg.(string)) {
+	if !utils.IsAllDigits(projectID) {
 		request.Params.Arguments["qt"] = "path"
 	}
 	request.Params.Arguments["pr_qt"] = "iid"
 
-	apiUrl := fmt.Sprintf("/%d/projects/%s/pull_requests/%d/diff", enterpriseID, url.QueryEscape(projectIDArg.(string)), pullRequestID)
+	apiUrl := fmt.Sprintf("/%d/projects/%s/pull_requests/%d/diff", enterpriseID, url.QueryEscape(projectID), pullRequestID)
 	opts = append(opts, utils.WithQuery(request.Params.Arguments))
 	giteeClient := utils.NewGiteeClient("GET", apiUrl, opts...)
 
 	data := types.PullDiff{}
 	return giteeClient.HandleMCPResult(&data)
 }
-

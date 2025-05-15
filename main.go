@@ -97,7 +97,7 @@ func addTools(s *server.MCPServer) {
 	addTool(s, repository.CreateReleaseTool, repository.CreateReleaseHandleFunc)
 	addTool(s, repository.ListReleasesTool, repository.ListReleasesHandleFunc)
 	addTool(s, repository.GetRepoTreeTool, repository.GetRepoTreeHandleFunc)
-	addTool(s, repository.GetFileContentTool, repository.GetFileContentHandler)
+	addTool(s, repository.GetFileContentTool, repository.GetFileContentHandleFunc)
 
 	// Pulls
 	addTool(s, pulls.ListEntPullsTool, pulls.ListEntPullsHandleFunc)

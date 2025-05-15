@@ -3,10 +3,11 @@ package pulls
 import (
 	"context"
 	"fmt"
+	"net/url"
+
 	"gitee.com/oschina/mcp-gitee-ent/operations/types"
 	"gitee.com/oschina/mcp-gitee-ent/utils"
 	"github.com/mark3labs/mcp-go/mcp"
-	"net/url"
 )
 
 const (
@@ -74,9 +75,13 @@ func CreateEntPullHandleFunc(ctx context.Context, request mcp.CallToolRequest, o
 		return mcp.NewToolResultError(err.Error()), err
 	}
 	projectIDArg := request.Params.Arguments["project_id"]
+	projectID, err := utils.SafelyConvertToString(projectIDArg)
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), err
+	}
 
-	apiUrl := fmt.Sprintf("/%d/projects/%s/pull_requests", enterpriseID, url.QueryEscape(projectIDArg.(string)))
-	if !utils.IsAllDigits(projectIDArg.(string)) {
+	apiUrl := fmt.Sprintf("/%d/projects/%s/pull_requests", enterpriseID, url.QueryEscape(projectID))
+	if !utils.IsAllDigits(projectID) {
 		request.Params.Arguments["qt"] = "path"
 	}
 	opts = append(opts, utils.WithPayload(request.Params.Arguments))
@@ -85,4 +90,3 @@ func CreateEntPullHandleFunc(ctx context.Context, request mcp.CallToolRequest, o
 	data := types.PullDetail{}
 	return giteeClient.HandleMCPResult(&data)
 }
-

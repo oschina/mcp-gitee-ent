@@ -31,7 +31,6 @@ var (
 	enabledToolsetsFlag  string
 )
 
-
 // wrapOptionHandler creates a standard ToolHandlerFunc from an OptionHandlerFunc,
 // allowing predefined options to be passed during registration.
 func wrapOptionHandler(handler utils.OptionHandlerFunc, opts ...utils.Option) server.ToolHandlerFunc {
@@ -97,6 +96,8 @@ func addTools(s *server.MCPServer) {
 	addTool(s, repository.CreateRepositoryTool, repository.CreateRepositoryHandleFunc)
 	addTool(s, repository.CreateReleaseTool, repository.CreateReleaseHandleFunc)
 	addTool(s, repository.ListReleasesTool, repository.ListReleasesHandleFunc)
+	addTool(s, repository.GetRepoTreeTool, repository.GetRepoTreeHandleFunc)
+	addTool(s, repository.GetFileContentTool, repository.GetFileContentHandler)
 
 	// Pulls
 	addTool(s, pulls.ListEntPullsTool, pulls.ListEntPullsHandleFunc)

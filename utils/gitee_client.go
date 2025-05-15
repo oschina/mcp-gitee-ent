@@ -2,7 +2,6 @@ package utils
 
 import (
 	"bytes"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -312,28 +311,6 @@ func (g *GiteeClient) HandleMCPResult(object any) (*mcp.CallToolResult, error) {
 	if err = json.Unmarshal(body, object); err != nil {
 		errorMessage := fmt.Sprintf("Failed to parse response: %v", err)
 		return mcp.NewToolResultError(errorMessage), NewInternalError(errors.New(errorMessage))
-	}
-
-	// decode file base64 content
-	switch v := object.(type) {
-	case *[]types.FileContent:
-		for i := range *v {
-			content, err := base64.StdEncoding.DecodeString((*v)[i].Content)
-			if err != nil {
-				return mcp.NewToolResultError(fmt.Sprintf("Failed to decode base64 content: %s", err.Error())),
-					NewInternalError(err)
-			}
-			(*v)[i].Content = string(content)
-		}
-		object = v
-	case *types.FileContent:
-		content, err := base64.StdEncoding.DecodeString(v.Content)
-		if err != nil {
-			return mcp.NewToolResultError(fmt.Sprintf("Failed to decode base64 content: %s", err.Error())),
-				NewInternalError(err)
-		}
-		v.Content = string(content)
-		object = v
 	}
 
 	result, err := json.MarshalIndent(object, "", "  ")

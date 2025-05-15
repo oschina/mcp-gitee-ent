@@ -172,6 +172,8 @@ mcp-gitee-ent --version
 | **list_scrum_versions**            | 项目           | 列出 Scrum 版本 |
 | **list_issue_types**               | 工作项类型        | 列出工作项类型     |
 | **list_issue_type_states**         | 工作项状态        | 列出工作项状态     |
+| **get_enterprise_repository_file_content** | 仓库 | 获取仓库中特定文件的内容 |
+| **get_enterprise_repo_tree** | 仓库 | 获取仓库的目录树结构 |
 
 ## 贡献
 

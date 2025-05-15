@@ -172,6 +172,8 @@ The server provides various tools for interacting with Gitee Enterprise:
 | **list_scrum_versions**  | Program        | List Scrum Versions |
 | **list_issue_types**     | Issue Type   | List issue types |
 | **list_issue_type_states** | Issue State | List issue states |
+| **get_enterprise_repository_file_content** | Repository | Get the content of a specific file in the repository |
+| **get_enterprise_repo_tree** | Repository | Get the tree structure of a repository |
 
 ## Contribution
 

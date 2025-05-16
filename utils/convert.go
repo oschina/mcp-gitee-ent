@@ -60,8 +60,14 @@ func SafelyConvertToString(value interface{}) (string, error) {
 	case int64:
 		return fmt.Sprintf("%d", v), nil
 	case float32:
+		if float32(int(v)) == v {
+			return fmt.Sprintf("%d", int(v)), nil
+		}
 		return fmt.Sprintf("%g", v), nil
 	case float64:
+		if float64(int64(v)) == v {
+			return fmt.Sprintf("%d", int64(v)), nil
+		}
 		return fmt.Sprintf("%g", v), nil
 	case bool:
 		return fmt.Sprintf("%t", v), nil

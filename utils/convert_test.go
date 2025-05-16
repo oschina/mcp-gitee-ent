@@ -36,13 +36,25 @@ func TestSafelyConvertToString(t *testing.T) {
 			wantErr:  false,
 		},
 		{
-			name:     "float32类型",
+			name:     "float32类型-整数",
+			input:    float32(123.0),
+			expected: "123",
+			wantErr:  false,
+		},
+		{
+			name:     "float32类型-小数",
 			input:    float32(123.45),
 			expected: "123.45",
 			wantErr:  false,
 		},
 		{
-			name:     "float64类型",
+			name:     "float64类型-整数",
+			input:    float64(456.0),
+			expected: "456",
+			wantErr:  false,
+		},
+		{
+			name:     "float64类型-小数",
 			input:    123.45,
 			expected: "123.45",
 			wantErr:  false,

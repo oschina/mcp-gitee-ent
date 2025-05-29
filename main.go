@@ -4,6 +4,10 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"log"
+	"os"
+	"strings"
+
 	"gitee.com/oschina/mcp-gitee-ent/operations/enterprises"
 	"gitee.com/oschina/mcp-gitee-ent/operations/groups"
 	"gitee.com/oschina/mcp-gitee-ent/operations/issue_states"
@@ -20,9 +24,6 @@ import (
 	"gitee.com/oschina/mcp-gitee-ent/utils"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
-	"log"
-	"os"
-	"strings"
 )
 
 var (
@@ -107,7 +108,7 @@ func addTools(s *server.MCPServer) {
 	addTool(s, pulls.CommentPullTool, pulls.CommentPullHandleFunc)
 	addTool(s, pulls.ListPullCommentsTool, pulls.ListPullCommentsHandleFunc)
 	addTool(s, pulls.MergePullTool, pulls.MergePullHandleFunc)
-	addTool(s, pulls.UpdatePullTool, pulls.UpdatePullHandleFunc)
+	addTool(s, pulls.UpdatePullTool, pulls.UpdateEntPullHandleFunc)
 
 	// Enterprises
 	addTool(s, enterprises.ListEnterprisesTool, enterprises.ListEnterprisesHandleFunc)

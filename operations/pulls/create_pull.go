@@ -64,17 +64,23 @@ var CreateEntPullTool = mcp.NewTool(CreateEntPull,
 )
 
 func CreateEntPullHandleFunc(ctx context.Context, request mcp.CallToolRequest, opts ...utils.Option) (*mcp.CallToolResult, error) {
+	// 安全转换参数类型
+	arguments, err := utils.ConvertArgumentsToMap(request.Params.Arguments)
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), err
+	}
+
 	// Validate required parameters
-	if checkResult, err := utils.CheckRequired(request.Params.Arguments, "project_id", "source_branch", "target_branch", "title"); err != nil {
+	if checkResult, err := utils.CheckRequired(arguments, "project_id", "source_branch", "target_branch", "title"); err != nil {
 		return checkResult, err
 	}
 
-	enterpriseIDArg := request.Params.Arguments["enterprise_id"]
+	enterpriseIDArg := arguments["enterprise_id"]
 	enterpriseID, err := utils.SafelyConvertToInt(enterpriseIDArg)
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), err
 	}
-	projectIDArg := request.Params.Arguments["project_id"]
+	projectIDArg := arguments["project_id"]
 	projectID, err := utils.SafelyConvertToString(projectIDArg)
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), err
@@ -82,9 +88,9 @@ func CreateEntPullHandleFunc(ctx context.Context, request mcp.CallToolRequest, o
 
 	apiUrl := fmt.Sprintf("/%d/projects/%s/pull_requests", enterpriseID, url.QueryEscape(projectID))
 	if !utils.IsAllDigits(projectID) {
-		request.Params.Arguments["qt"] = "path"
+		arguments["qt"] = "path"
 	}
-	opts = append(opts, utils.WithPayload(request.Params.Arguments))
+	opts = append(opts, utils.WithPayload(arguments))
 	giteeClient := utils.NewGiteeClient("POST", apiUrl, opts...)
 
 	data := types.PullDetail{}

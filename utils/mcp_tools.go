@@ -2,6 +2,19 @@ package utils
 
 import "github.com/mark3labs/mcp-go/mcp"
 
+// ConvertArgumentsToMap 将 any 类型的参数安全转换为 map[string]interface{}
+func ConvertArgumentsToMap(arguments any) (map[string]interface{}, error) {
+	if arguments == nil {
+		return make(map[string]interface{}), nil
+	}
+
+	if argMap, ok := arguments.(map[string]interface{}); ok {
+		return argMap, nil
+	}
+
+	return nil, NewParamError("arguments", "arguments must be a map[string]interface{}")
+}
+
 func CombineOptions(options ...[]mcp.ToolOption) []mcp.ToolOption {
 	var result []mcp.ToolOption
 	for _, option := range options {

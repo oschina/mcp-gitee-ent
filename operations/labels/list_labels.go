@@ -3,6 +3,7 @@ package labels
 import (
 	"context"
 	"fmt"
+
 	"gitee.com/oschina/mcp-gitee-ent/operations/types"
 	"gitee.com/oschina/mcp-gitee-ent/utils"
 	"github.com/mark3labs/mcp-go/mcp"
@@ -46,21 +47,26 @@ var ListEnterpriseLabelsTool = mcp.NewTool(ListEnterpriseLabels,
 )
 
 func ListEnterpriseLabelsHandleFunc(ctx context.Context, request mcp.CallToolRequest, opts ...utils.Option) (*mcp.CallToolResult, error) {
+	// 安全转换参数类型
+	arguments, err := utils.ConvertArgumentsToMap(request.Params.Arguments)
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), err
+	}
+
 	// Validate required parameters
-	if checkResult, err := utils.CheckRequired(request.Params.Arguments); err != nil {
+	if checkResult, err := utils.CheckRequired(arguments); err != nil {
 		return checkResult, err
 	}
-	enterpriseIDArg := request.Params.Arguments["enterprise_id"]
+	enterpriseIDArg := arguments["enterprise_id"]
 	enterpriseID, err := utils.SafelyConvertToInt(enterpriseIDArg)
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), err
 	}
 
 	apiUrl := fmt.Sprintf("/%d/labels", enterpriseID)
-	opts = append(opts, utils.WithQuery(request.Params.Arguments))
+	opts = append(opts, utils.WithQuery(arguments))
 	giteeClient := utils.NewGiteeClient("GET", apiUrl, opts...)
 
 	data := types.PagedResponse[types.Label]{}
 	return giteeClient.HandleMCPResult(&data)
 }
-

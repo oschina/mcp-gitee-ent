@@ -3,6 +3,7 @@ package issues
 import (
 	"context"
 	"fmt"
+
 	"gitee.com/oschina/mcp-gitee-ent/operations/types"
 	"gitee.com/oschina/mcp-gitee-ent/utils"
 
@@ -33,24 +34,33 @@ var CommentIssueTool = mcp.NewTool(CommentIssue,
 )
 
 func CommentIssueHandleFunc(ctx context.Context, request mcp.CallToolRequest, opts ...utils.Option) (*mcp.CallToolResult, error) {
-	// Validate required parameters
-	if checkResult, err := utils.CheckRequired(request.Params.Arguments, "issue_id", "body"); err != nil {
+	// 安全转换参数类型
+	arguments, err := utils.ConvertArgumentsToMap(request.Params.Arguments)
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), err
+	}
+
+	if checkResult, err := utils.CheckRequired(arguments, "issue_id", "body"); err != nil {
 		return checkResult, err
 	}
 
-	enterpriseIDArg := request.Params.Arguments["enterprise_id"]
+	enterpriseIDArg := arguments["enterprise_id"]
 	enterpriseID, err := utils.SafelyConvertToInt(enterpriseIDArg)
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), err
 	}
-	issueID := request.Params.Arguments["issue_id"]
-	request.Params.Arguments["qt"] = "ident"
+	issueIDArg := arguments["issue_id"]
+	body := arguments["body"]
 
-	apiUrl := fmt.Sprintf("/%d/issues/%s/notes", enterpriseID, issueID)
-	opts = append(opts, utils.WithPayload(request.Params.Arguments))
+	apiUrl := fmt.Sprintf("/%d/issues/%s/comments", enterpriseID, issueIDArg)
+
+	payload := map[string]interface{}{
+		"body": body,
+	}
+
+	opts = append(opts, utils.WithPayload(payload))
 	giteeClient := utils.NewGiteeClient("POST", apiUrl, opts...)
 
 	data := types.IssueComment{}
 	return giteeClient.HandleMCPResult(&data)
 }
-

@@ -34,32 +34,39 @@ var GetEntPullDetailTool = mcp.NewTool(GetEntPullDetail,
 )
 
 func GetPullDetailHandleFunc(ctx context.Context, request mcp.CallToolRequest, opts ...utils.Option) (*mcp.CallToolResult, error) {
+	// 安全转换参数类型
+	arguments, err := utils.ConvertArgumentsToMap(request.Params.Arguments)
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), err
+	}
+
 	// Validate required parameters
-	if checkResult, err := utils.CheckRequired(request.Params.Arguments, "project_id", "pull_request_id"); err != nil {
+	if checkResult, err := utils.CheckRequired(arguments, "project_id", "pull_request_id"); err != nil {
 		return checkResult, err
 	}
-	enterpriseIDArg := request.Params.Arguments["enterprise_id"]
+	enterpriseIDArg := arguments["enterprise_id"]
 	enterpriseID, err := utils.SafelyConvertToInt(enterpriseIDArg)
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), err
 	}
-	projectIDArg := request.Params.Arguments["project_id"]
+	projectIDArg := arguments["project_id"]
 	projectID, err := utils.SafelyConvertToString(projectIDArg)
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), err
 	}
-	pullRequestIDArg := request.Params.Arguments["pull_request_id"]
+	pullRequestIDArg := arguments["pull_request_id"]
 	pullRequestID, err := utils.SafelyConvertToInt(pullRequestIDArg)
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), err
 	}
+
 	if !utils.IsAllDigits(projectID) {
-		request.Params.Arguments["qt"] = "path"
+		arguments["qt"] = "path"
 	}
-	request.Params.Arguments["pr_qt"] = "iid"
+	arguments["pr_qt"] = "iid"
 
 	apiUrl := fmt.Sprintf("/%d/projects/%s/pull_requests/%d", enterpriseID, url.QueryEscape(projectID), pullRequestID)
-	opts = append(opts, utils.WithQuery(request.Params.Arguments))
+	opts = append(opts, utils.WithQuery(arguments))
 	giteeClient := utils.NewGiteeClient("GET", apiUrl, opts...)
 
 	data := types.PullDetail{}

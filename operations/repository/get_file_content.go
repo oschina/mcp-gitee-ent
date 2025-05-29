@@ -35,31 +35,39 @@ var GetFileContentTool = mcp.NewTool(
 )
 
 func GetFileContentHandleFunc(ctx context.Context, request mcp.CallToolRequest, opts ...utils.Option) (*mcp.CallToolResult, error) {
+	// 安全转换参数类型
+	arguments, err := utils.ConvertArgumentsToMap(request.Params.Arguments)
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), err
+	}
+
 	// Validate required parameters
-	if checkResult, err := utils.CheckRequired(request.Params.Arguments, "project_id", "ref"); err != nil {
+	if checkResult, err := utils.CheckRequired(arguments, "project_id", "ref"); err != nil {
 		return checkResult, err
 	}
-	enterpriseIDArg := request.Params.Arguments["enterprise_id"]
+
+	enterpriseIDArg := arguments["enterprise_id"]
 	enterpriseID, err := utils.SafelyConvertToInt(enterpriseIDArg)
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), err
 	}
-	projectIDArg := request.Params.Arguments["project_id"]
+	projectIDArg := arguments["project_id"]
 	projectID, err := utils.SafelyConvertToString(projectIDArg)
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), err
 	}
+	refArg := arguments["ref"]
+	ref, err := utils.SafelyConvertToString(refArg)
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), err
+	}
+
 	if !utils.IsAllDigits(projectID) {
-		request.Params.Arguments["qt"] = "path"
-	}
-	ref, ok := request.Params.Arguments["ref"].(string)
-	if !ok {
-		return mcp.NewToolResultError("ref is invalid"), nil
+		arguments["qt"] = "path"
 	}
 
-	apiUrl := fmt.Sprintf("/%d/projects/%s/blob/%s", enterpriseID, url.QueryEscape(projectID), url.QueryEscape(ref))
-
-	opts = append(opts, utils.WithQuery(request.Params.Arguments))
+	apiUrl := fmt.Sprintf("/%d/projects/%s/repository/files%s", enterpriseID, url.QueryEscape(projectID), ref)
+	opts = append(opts, utils.WithQuery(arguments))
 	giteeClient := utils.NewGiteeClient("GET", apiUrl, opts...)
 
 	data := types.FileContent{}

@@ -3,6 +3,7 @@ package issues
 import (
 	"context"
 	"fmt"
+
 	"gitee.com/oschina/mcp-gitee-ent/operations/types"
 	"gitee.com/oschina/mcp-gitee-ent/utils"
 
@@ -48,24 +49,28 @@ var ListIssueCommentsTool = mcp.NewTool(ListIssueComments,
 )
 
 func ListIssueCommentsHandleFunc(ctx context.Context, request mcp.CallToolRequest, opts ...utils.Option) (*mcp.CallToolResult, error) {
-	// Validate required parameters
-	if checkResult, err := utils.CheckRequired(request.Params.Arguments, "issue_id"); err != nil {
-		return checkResult, err
-	}
-	enterpriseIDArg := request.Params.Arguments["enterprise_id"]
-	enterpriseID, err := utils.SafelyConvertToInt(enterpriseIDArg)
+	// 安全转换参数类型
+	arguments, err := utils.ConvertArgumentsToMap(request.Params.Arguments)
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), err
 	}
 
-	issueID := request.Params.Arguments["issue_id"]
-	request.Params.Arguments["qt"] = "ident"
+	// Validate required parameters
+	if checkResult, err := utils.CheckRequired(arguments, "issue_id"); err != nil {
+		return checkResult, err
+	}
 
-	apiUrl := fmt.Sprintf("/%d/issues/%s/notes", enterpriseID, issueID)
-	opts = append(opts, utils.WithQuery(request.Params.Arguments))
+	enterpriseIDArg := arguments["enterprise_id"]
+	enterpriseID, err := utils.SafelyConvertToInt(enterpriseIDArg)
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), err
+	}
+	issueIDArg := arguments["issue_id"]
+
+	apiUrl := fmt.Sprintf("/%d/issues/%s/comments", enterpriseID, issueIDArg)
+	opts = append(opts, utils.WithQuery(arguments))
 	giteeClient := utils.NewGiteeClient("GET", apiUrl, opts...)
 
 	data := types.PagedResponse[types.IssueComment]{}
 	return giteeClient.HandleMCPResult(&data)
 }
-

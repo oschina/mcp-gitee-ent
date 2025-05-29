@@ -54,27 +54,33 @@ var CreateReleaseTool = mcp.NewTool(CreateRelease,
 )
 
 func CreateReleaseHandleFunc(ctx context.Context, request mcp.CallToolRequest, opts ...utils.Option) (*mcp.CallToolResult, error) {
-	if checkResult, err := utils.CheckRequired(request.Params.Arguments, "project_id", "release_tag_version", "release_title", "release_description"); err != nil {
+	// 安全转换参数类型
+	arguments, err := utils.ConvertArgumentsToMap(request.Params.Arguments)
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), err
+	}
+
+	if checkResult, err := utils.CheckRequired(arguments, "project_id", "release_tag_version", "release_title", "release_description"); err != nil {
 		return checkResult, err
 	}
 
-	enterpriseIDArg := request.Params.Arguments["enterprise_id"]
+	enterpriseIDArg := arguments["enterprise_id"]
 	enterpriseID, err := utils.SafelyConvertToInt(enterpriseIDArg)
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), err
 	}
-	projectIDArg := request.Params.Arguments["project_id"]
+	projectIDArg := arguments["project_id"]
 	projectID, err := utils.SafelyConvertToString(projectIDArg)
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), err
 	}
 	if !utils.IsAllDigits(projectID) {
-		request.Params.Arguments["qt"] = "path"
+		arguments["qt"] = "path"
 	}
 
 	apiUrl := fmt.Sprintf("/%d/projects/%s/releases", enterpriseID, url.QueryEscape(projectID))
 
-	payload := utils.ConvertToHash(request.Params.Arguments, "release", "tag_version", "title", "ref", "description", "release_type")
+	payload := utils.ConvertToHash(arguments, "release", "tag_version", "title", "ref", "description", "release_type")
 	opts = append(opts, utils.WithPayload(payload))
 	giteeClient := utils.NewGiteeClient("POST", apiUrl, opts...)
 

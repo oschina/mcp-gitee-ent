@@ -68,22 +68,27 @@ var ListEntMembersTool = mcp.NewTool(ListEntMembers,
 )
 
 func ListEntMembersHandleFunc(ctx context.Context, request mcp.CallToolRequest, opts ...utils.Option) (*mcp.CallToolResult, error) {
+	// 安全转换参数类型
+	arguments, err := utils.ConvertArgumentsToMap(request.Params.Arguments)
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), err
+	}
+
 	// Validate required parameters
-	if checkResult, err := utils.CheckRequired(request.Params.Arguments); err != nil {
+	if checkResult, err := utils.CheckRequired(arguments); err != nil {
 		return checkResult, err
 	}
-	enterpriseIDArg := request.Params.Arguments["enterprise_id"]
+	enterpriseIDArg := arguments["enterprise_id"]
 	enterpriseID, err := utils.SafelyConvertToInt(enterpriseIDArg)
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), err
 	}
 
 	apiUrl := fmt.Sprintf("/%d/members", enterpriseID)
-	opts = append(opts, utils.WithQuery(request.Params.Arguments))
+	opts = append(opts, utils.WithQuery(arguments))
 	giteeClient := utils.NewGiteeClient("GET", apiUrl, opts...)
 
 	// Handle response
 	data := types.PagedResponse[types.EnterpriseMember]{}
 	return giteeClient.HandleMCPResult(&data)
 }
-

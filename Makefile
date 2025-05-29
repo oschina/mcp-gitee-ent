@@ -1,6 +1,6 @@
 # Makefile for cross-platform build
 BINARY_NAME = mcp-gitee-ent
-NPM_VERSION = 0.1.6
+NPM_VERSION = 0.1.7
 GO = go
 OSES = darwin linux windows
 ARCHS = amd64 arm64

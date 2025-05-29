@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"fmt"
+
 	"gitee.com/oschina/mcp-gitee-ent/operations/types"
 	"gitee.com/oschina/mcp-gitee-ent/utils"
 
@@ -87,10 +88,16 @@ var ListRepositoriesTool = mcp.NewTool(ListEnterpriseProjects,
 )
 
 func ListRepositoriesHandleFunc(ctx context.Context, request mcp.CallToolRequest, opts ...utils.Option) (*mcp.CallToolResult, error) {
-	if checkResult, err := utils.CheckRequired(request.Params.Arguments); err != nil {
+	// 安全转换参数类型
+	arguments, err := utils.ConvertArgumentsToMap(request.Params.Arguments)
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), err
+	}
+
+	if checkResult, err := utils.CheckRequired(arguments); err != nil {
 		return checkResult, err
 	}
-	enterpriseIDArg := request.Params.Arguments["enterprise_id"]
+	enterpriseIDArg := arguments["enterprise_id"]
 	enterpriseID, err := utils.SafelyConvertToInt(enterpriseIDArg)
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), err
@@ -98,7 +105,7 @@ func ListRepositoriesHandleFunc(ctx context.Context, request mcp.CallToolRequest
 
 	apiUrl := fmt.Sprintf("/%d/projects", enterpriseID)
 
-	opts = append(opts, utils.WithQuery(request.Params.Arguments))
+	opts = append(opts, utils.WithQuery(arguments))
 	giteeClient := utils.NewGiteeClient("GET", apiUrl, opts...)
 
 	data := types.PagedResponse[types.Repository]{}

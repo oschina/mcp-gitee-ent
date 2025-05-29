@@ -3,6 +3,7 @@ package issue_states
 import (
 	"context"
 	"fmt"
+
 	"gitee.com/oschina/mcp-gitee-ent/operations/types"
 	"gitee.com/oschina/mcp-gitee-ent/utils"
 	"github.com/mark3labs/mcp-go/mcp"
@@ -47,25 +48,30 @@ var ListIssueTypeStatesTool = mcp.NewTool(ListIssueTypeStates,
 )
 
 func ListIssueTypeStatesHandleFunc(ctx context.Context, request mcp.CallToolRequest, opts ...utils.Option) (*mcp.CallToolResult, error) {
-	if checkResult, err := utils.CheckRequired(request.Params.Arguments, "issue_type_id"); err != nil {
+	// 安全转换参数类型
+	arguments, err := utils.ConvertArgumentsToMap(request.Params.Arguments)
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), err
+	}
+
+	if checkResult, err := utils.CheckRequired(arguments, "issue_type_id"); err != nil {
 		return checkResult, err
 	}
-	enterpriseIDArg := request.Params.Arguments["enterprise_id"]
+	enterpriseIDArg := arguments["enterprise_id"]
 	enterpriseID, err := utils.SafelyConvertToInt(enterpriseIDArg)
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), err
 	}
 
-	issueTypeIDArg := request.Params.Arguments["issue_type_id"]
+	issueTypeIDArg := arguments["issue_type_id"]
 	issueTypeID, err := utils.SafelyConvertToInt(issueTypeIDArg)
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), err
 	}
 
 	apiUrl := fmt.Sprintf("/%d/issue_types/%d/issue_states", enterpriseID, issueTypeID)
-	opts = append(opts, utils.WithQuery(request.Params.Arguments))
+	opts = append(opts, utils.WithQuery(arguments))
 	giteeClient := utils.NewGiteeClient("GET", apiUrl, opts...)
 	data := types.PagedResponse[types.IssueState]{}
 	return giteeClient.HandleMCPResult(&data)
 }
-

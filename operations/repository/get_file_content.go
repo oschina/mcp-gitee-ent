@@ -56,8 +56,10 @@ func GetFileContentHandleFunc(ctx context.Context, request mcp.CallToolRequest, 
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), err
 	}
-	refArg := arguments["ref"]
-	ref, err := utils.SafelyConvertToString(refArg)
+	ref, ok := arguments["ref"].(string)
+	if !ok {
+		return mcp.NewToolResultError("ref is invalid"), nil
+	}
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), err
 	}
@@ -66,7 +68,7 @@ func GetFileContentHandleFunc(ctx context.Context, request mcp.CallToolRequest, 
 		arguments["qt"] = "path"
 	}
 
-	apiUrl := fmt.Sprintf("/%d/projects/%s/repository/files%s", enterpriseID, url.QueryEscape(projectID), ref)
+	apiUrl := fmt.Sprintf("/%d/projects/%s/blob/%s", enterpriseID, url.QueryEscape(projectID), url.QueryEscape(ref))
 	opts = append(opts, utils.WithQuery(arguments))
 	giteeClient := utils.NewGiteeClient("GET", apiUrl, opts...)
 

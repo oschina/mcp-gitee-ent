@@ -58,10 +58,12 @@ func GetRepoTreeHandleFunc(ctx context.Context, request mcp.CallToolRequest, opt
 	if !utils.IsAllDigits(projectID) {
 		arguments["qt"] = "path"
 	}
-	refArg := arguments["ref"]
+	refArg, ok := arguments["ref"].(string)
+	if !ok {
+		return mcp.NewToolResultError("ref is invalid"), nil
+	}
 
-	apiUrl := fmt.Sprintf("/%d/projects/%s/repository/tree", enterpriseID, url.QueryEscape(projectID))
-	arguments["ref"] = refArg
+	apiUrl := fmt.Sprintf("/%d/projects/%s/tree/%s", enterpriseID, url.QueryEscape(projectID), url.QueryEscape(refArg))
 	opts = append(opts, utils.WithQuery(arguments))
 	giteeClient := utils.NewGiteeClient("GET", apiUrl, opts...)
 

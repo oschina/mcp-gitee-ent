@@ -66,8 +66,9 @@ func ListIssueCommentsHandleFunc(ctx context.Context, request mcp.CallToolReques
 		return mcp.NewToolResultError(err.Error()), err
 	}
 	issueIDArg := arguments["issue_id"]
+	arguments["qt"] = "ident"
 
-	apiUrl := fmt.Sprintf("/%d/issues/%s/comments", enterpriseID, issueIDArg)
+	apiUrl := fmt.Sprintf("/%d/issues/%s/notes", enterpriseID, issueIDArg)
 	opts = append(opts, utils.WithQuery(arguments))
 	giteeClient := utils.NewGiteeClient("GET", apiUrl, opts...)
 

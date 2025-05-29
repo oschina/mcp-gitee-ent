@@ -76,7 +76,7 @@ func ListPullCommentsHandleFunc(ctx context.Context, request mcp.CallToolRequest
 	}
 	arguments["pr_qt"] = "iid"
 
-	apiUrl := fmt.Sprintf("/%d/projects/%s/pull_requests/%d/comments", enterpriseID, url.QueryEscape(projectID), pullRequestID)
+	apiUrl := fmt.Sprintf("/%d/projects/%s/pull_requests/%d/notes", enterpriseID, url.QueryEscape(projectID), pullRequestID)
 	opts = append(opts, utils.WithQuery(arguments))
 	giteeClient := utils.NewGiteeClient("GET", apiUrl, opts...)
 

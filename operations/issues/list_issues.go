@@ -143,6 +143,7 @@ func ListIssuesHandleFunc(ctx context.Context, request mcp.CallToolRequest, opts
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), err
 	}
+	arguments["show_scrum_sprints"] = true
 
 	apiUrl := fmt.Sprintf("/%d/issues", enterpriseID)
 	opts = append(opts, utils.WithQuery(arguments))

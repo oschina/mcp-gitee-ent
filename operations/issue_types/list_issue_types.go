@@ -77,7 +77,7 @@ func ListIssueTypesHandleFunc(ctx context.Context, request mcp.CallToolRequest, 
 		return mcp.NewToolResultError(err.Error()), err
 	}
 
-	apiUrl := fmt.Sprintf("/%d/issue_types", enterpriseID)
+	apiUrl := fmt.Sprintf("/%d/issue_types/enterprise_issue_types", enterpriseID)
 	opts = append(opts, utils.WithQuery(arguments))
 	giteeClient := utils.NewGiteeClient("GET", apiUrl, opts...)
 

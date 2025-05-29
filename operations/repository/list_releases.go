@@ -69,6 +69,6 @@ func ListReleasesHandleFunc(ctx context.Context, request mcp.CallToolRequest, op
 	opts = append(opts, utils.WithQuery(arguments))
 	giteeClient := utils.NewGiteeClient("GET", apiUrl, opts...)
 
-	data := types.PagedResponse[types.Release]{}
+	data := types.PagedResponse[types.ReleaseDetail]{}
 	return giteeClient.HandleMCPResult(&data)
 }

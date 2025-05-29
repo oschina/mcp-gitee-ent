@@ -45,6 +45,7 @@ func GetIssueDetailHandleFunc(ctx context.Context, request mcp.CallToolRequest, 
 		return mcp.NewToolResultError(err.Error()), err
 	}
 	issueIDArg := arguments["issue_id"]
+	arguments["qt"] = "ident"
 
 	apiUrl := fmt.Sprintf("/%d/issues/%s", enterpriseID, issueIDArg)
 	opts = append(opts, utils.WithQuery(arguments))

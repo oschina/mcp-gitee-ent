@@ -52,10 +52,11 @@ func CommentIssueHandleFunc(ctx context.Context, request mcp.CallToolRequest, op
 	issueIDArg := arguments["issue_id"]
 	body := arguments["body"]
 
-	apiUrl := fmt.Sprintf("/%d/issues/%s/comments", enterpriseID, issueIDArg)
+	apiUrl := fmt.Sprintf("/%d/issues/%s/notes", enterpriseID, issueIDArg)
 
 	payload := map[string]interface{}{
 		"body": body,
+		"qt":   "ident",
 	}
 
 	opts = append(opts, utils.WithPayload(payload))

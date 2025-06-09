@@ -2,6 +2,8 @@
 
 Gitee Enterprise MCP Server is a Model Context Protocol (MCP) server implementation for Gitee Enterprise. It provides a set of tools for interacting with Gitee Enterprise API, allowing AI assistants to manage enterprise repositories, issues, pull requests, and more.
 
+[![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/install-mcp?name=gitee-ent&config=eyJjb21tYW5kIjoibnB4IC15IEBnaXRlZS9tY3AtZ2l0ZWUtZW50QGxhdGVzdCIsImVudiI6eyJHSVRFRV9FTlRfTUNQX0FDQ0VTU19UT0tFTiI6Inh4eHh4In19)
+
 ## Features
 
 - Interact with Gitee Enterprise repositories, issues, pull requests

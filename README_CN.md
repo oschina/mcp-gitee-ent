@@ -2,7 +2,7 @@
 
 Gitee 企业版 MCP 服务器是一个用于 Gitee 企业版的模型上下文协议（MCP）服务器实现。它提供了一套工具集，用于与 Gitee 企业版 API 交互，使 AI 助手能够管理企业仓库、问题、拉取请求等。
 
-[![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/install-mcp?name=gitee-ent&config=eyJjb21tYW5kIjoibnB4IC15IEBnaXRlZS9tY3AtZ2l0ZWUtZW50QGxhdGVzdCIsImVudiI6eyJHSVRFRV9FTlRfTUNQX0FDQ0VTU19UT0tFTiI6Inh4eHh4In19)
+[![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.svg)](https://cursor.com/en/install-mcp?name=gitee-ent&config=eyJjb21tYW5kIjoibnB4IC15IEBnaXRlZS9tY3AtZ2l0ZWUtZW50QGxhdGVzdCIsImVudiI6eyJHSVRFRV9FTlRfTUNQX0FDQ0VTU19UT0tFTiI6Ijx5b3VyIG1jcCBlbnQgYWNjZXNzIHRva2VuPiJ9fQ%3D%3D)
 
 ## 功能特性
 

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"gitee.com/oschina/mcp-gitee-ent/operations/types"
 	"io"
 	"net/http"
 	"net/url"
@@ -13,6 +12,7 @@ import (
 	"runtime"
 	"strconv"
 
+	"gitee.com/oschina/mcp-gitee-ent/operations/types"
 	"github.com/mark3labs/mcp-go/mcp"
 )
 
@@ -313,7 +313,7 @@ func (g *GiteeClient) HandleMCPResult(object any) (*mcp.CallToolResult, error) {
 		return mcp.NewToolResultError(errorMessage), NewInternalError(errors.New(errorMessage))
 	}
 
-	result, err := json.MarshalIndent(object, "", "  ")
+	result, err := json.Marshal(object)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("Failed to format response: %s", err.Error())),
 			NewInternalError(err)

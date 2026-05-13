@@ -43,10 +43,14 @@ var UpdatePullTool = mcp.NewTool(UpdateEntPull,
 		"body",
 		mcp.Description("Pull request description"),
 	),
-	mcp.WithString(
+  mcp.WithString(
 		"state_event",
 		mcp.Description("State event"),
 		mcp.Enum("close", "reopen"),
+	),
+	mcp.WithString(
+		"label_ids",
+		mcp.Description("Label IDs, comma separated (e.g. 1,2,3)"),
 	),
 )
 

@@ -57,9 +57,13 @@ var CreateEntPullTool = mcp.NewTool(CreateEntPull,
 		"tester_id",
 		mcp.Description("Tester IDs (comma separated)"),
 	),
-	mcp.WithString(
+  mcp.WithString(
 		"draft",
 		mcp.Description("Whether to specify as draft (true/false)"),
+	),
+	mcp.WithString(
+		"label_ids",
+		mcp.Description("Label IDs, comma separated (e.g. 1,2,3)"),
 	),
 )
 

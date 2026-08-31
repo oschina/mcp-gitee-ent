@@ -26,4 +26,3 @@ func ListEnterprisesHandleFunc(ctx context.Context, request mcp.CallToolRequest,
 
 	return giteeClient.HandleMCPResult(&data)
 }
-

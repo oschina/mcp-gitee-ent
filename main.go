@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 
+	"gitee.com/oschina/mcp-gitee-ent/operations/documents"
 	"gitee.com/oschina/mcp-gitee-ent/operations/enterprises"
 	"gitee.com/oschina/mcp-gitee-ent/operations/groups"
 	"gitee.com/oschina/mcp-gitee-ent/operations/issue_states"
@@ -84,6 +85,14 @@ func disableTools(s *server.MCPServer) {
 }
 
 func addTools(s *server.MCPServer) {
+	// Documents
+	addTool(s, documents.ListDocumentsTool, documents.ListDocumentsHandleFunc)
+	addTool(s, documents.ListDocumentPagesTool, documents.ListDocumentPagesHandleFunc)
+	addTool(s, documents.GetDocumentPageTool, documents.GetDocumentPageHandleFunc)
+	addTool(s, documents.UploadDocumentTool, documents.UploadDocumentHandleFunc)
+	addTool(s, documents.DownloadDocumentTool, documents.DownloadDocumentHandleFunc)
+	addTool(s, documents.UpdateDocumentPageTool, documents.UpdateDocumentPageHandleFunc)
+
 	// Issues
 	addTool(s, issues.ListIssuesTool, issues.ListIssuesHandleFunc)
 	addTool(s, issues.CreateIssueTool, issues.CreateIssueHandleFunc)

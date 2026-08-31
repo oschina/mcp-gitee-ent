@@ -2,6 +2,7 @@ package utils
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -78,16 +79,18 @@ func (c *CookieAuthorizer) Authorize(req *http.Request) error {
 }
 
 type GiteeClient struct {
-	Url        string
-	Method     string
-	Payload    interface{}
-	Headers    map[string]string
-	Response   *http.Response
-	parsedUrl  *url.URL
-	Query      map[string]string
-	httpClient *http.Client
-	authorizer Authorizer
-	apiBase    string // Added apiBase field
+	Url         string
+	Method      string
+	Payload     interface{}
+	Body        io.Reader
+	ContentType string
+	Headers     map[string]string
+	Response    *http.Response
+	parsedUrl   *url.URL
+	Query       map[string]string
+	httpClient  *http.Client
+	authorizer  Authorizer
+	apiBase     string // Added apiBase field
 }
 
 type Option func(client *GiteeClient)
@@ -162,6 +165,13 @@ func WithPayload(payload interface{}) Option {
 	}
 }
 
+func WithBody(body io.Reader, contentType string) Option {
+	return func(client *GiteeClient) {
+		client.Body = body
+		client.ContentType = contentType
+	}
+}
+
 func WithHeaders(headers map[string]string) Option {
 	return func(client *GiteeClient) {
 		client.Headers = headers
@@ -199,23 +209,33 @@ func (g *GiteeClient) SetHeaders(headers map[string]string) *GiteeClient {
 }
 
 func (g *GiteeClient) Do() (*GiteeClient, error) {
-	g.Response = nil
-	var requestBody []byte
-	var err error
+	return g.DoContext(context.Background())
+}
 
-	if g.Payload != nil {
-		requestBody, err = json.Marshal(g.Payload)
+func (g *GiteeClient) DoContext(ctx context.Context) (*GiteeClient, error) {
+	g.Response = nil
+	var requestBody io.Reader
+
+	if g.Body != nil {
+		requestBody = g.Body
+	} else if g.Payload != nil {
+		payload, err := json.Marshal(g.Payload)
 		if err != nil {
 			return nil, NewInternalError(fmt.Errorf("failed to marshal payload: %w", err))
 		}
+		requestBody = bytes.NewReader(payload)
 	}
 
-	req, err := http.NewRequest(g.Method, g.Url, bytes.NewReader(requestBody))
+	req, err := http.NewRequestWithContext(ctx, g.Method, g.Url, requestBody)
 	if err != nil {
 		return nil, NewInternalError(fmt.Errorf("failed to create request: %w", err))
 	}
 
-	req.Header.Set("Content-Type", "application/json")
+	contentType := g.ContentType
+	if contentType == "" {
+		contentType = "application/json"
+	}
+	req.Header.Set("Content-Type", contentType)
 	req.Header.Set("User-Agent", "mcp-gitee-ent "+Version+" Go/"+runtime.GOOS+"/"+runtime.GOARCH+"/"+runtime.Version())
 
 	for key, value := range g.Headers {
@@ -244,6 +264,7 @@ func (g *GiteeClient) Do() (*GiteeClient, error) {
 	// 检查响应状态码
 	if !g.IsSuccess() {
 		body, _ := io.ReadAll(resp.Body)
+		_ = resp.Body.Close()
 		return g, NewAPIError(resp.StatusCode, body)
 	}
 
@@ -278,20 +299,15 @@ func (g *GiteeClient) GetRespBody() ([]byte, error) {
 }
 
 func (g *GiteeClient) HandleMCPResult(object any) (*mcp.CallToolResult, error) {
-	_, err := g.Do()
+	return g.HandleMCPResultContext(context.Background(), object)
+}
+
+func (g *GiteeClient) HandleMCPResultContext(ctx context.Context, object any) (*mcp.CallToolResult, error) {
+	_, err := g.DoContext(ctx)
 	if err != nil {
-		switch {
-		case IsAuthError(err):
-			return mcp.NewToolResultError("Authentication failed: Please check your Gitee Ent MCP access token"), err
-		case IsNetworkError(err):
-			return mcp.NewToolResultError("Network error: Unable to connect to Gitee Enterprise API"), err
-		case IsAPIError(err):
-			giteeErr := err.(*GiteeError)
-			return mcp.NewToolResultError(fmt.Sprintf("API error (%d): %s", giteeErr.Code, giteeErr.Details)), err
-		default:
-			return mcp.NewToolResultError(err.Error()), err
-		}
+		return MCPErrorResult(err)
 	}
+	defer g.Response.Body.Close()
 
 	// Handle no content case when object is nil
 	if object == nil {
@@ -313,6 +329,24 @@ func (g *GiteeClient) HandleMCPResult(object any) (*mcp.CallToolResult, error) {
 		return mcp.NewToolResultError(errorMessage), NewInternalError(errors.New(errorMessage))
 	}
 
+	return MCPJSONResult(object)
+}
+
+func MCPErrorResult(err error) (*mcp.CallToolResult, error) {
+	switch {
+	case IsAuthError(err):
+		return mcp.NewToolResultError("Authentication failed: Please check your Gitee Ent MCP access token"), err
+	case IsNetworkError(err):
+		return mcp.NewToolResultError("Network error: Unable to connect to Gitee Enterprise API"), err
+	case IsAPIError(err):
+		giteeErr := err.(*GiteeError)
+		return mcp.NewToolResultError(fmt.Sprintf("API error (%d): %s", giteeErr.Code, giteeErr.Details)), err
+	default:
+		return mcp.NewToolResultError(err.Error()), err
+	}
+}
+
+func MCPJSONResult(object any) (*mcp.CallToolResult, error) {
 	result, err := json.Marshal(object)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("Failed to format response: %s", err.Error())),

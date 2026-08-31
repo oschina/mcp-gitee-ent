@@ -19,6 +19,7 @@ profile.cov
 *.iml
 
 .vscode/
+.omo/
 release/
 
 .DS_Store
@@ -45,3 +46,4 @@ mcp-gitee-ent-linux-arm64
 !npm/mcp-gitee-ent-linux-arm64
 mcp-gitee-ent-windows-amd64.exe
 mcp-gitee-ent-windows-arm64.exe
+npm/mcp-gitee-ent-*/bin/

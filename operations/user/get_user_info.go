@@ -21,4 +21,3 @@ func GetUserInfoHandleFunc(ctx context.Context, request mcp.CallToolRequest, opt
 	data := types.UserInfo{}
 	return giteeClient.HandleMCPResult(&data)
 }
-

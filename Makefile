@@ -1,121 +1,164 @@
-# Makefile for cross-platform build
-BINARY_NAME = mcp-gitee-ent
-NPM_VERSION = 0.1.11
-GO = go
-OSES = darwin linux windows
-ARCHS = amd64 arm64
+BINARY_NAME := mcp-gitee-ent
+GO ?= go
+OSES := darwin linux windows
+ARCHS := amd64 arm64
+RELEASE_TARGETS := darwin-amd64 darwin-arm64 linux-amd64 linux-arm64 linux-arm windows-amd64 windows-arm64
+BUILD_OUTPUT_DIR ?= bin/platforms
+RELEASE_DIR ?= release
+VERSION ?=
+NPM_VERSION ?= 0.0.0
 
+GITEE ?= gitee
+GITEE_HOSTNAME ?= gitee.com
+GITEE_REPO ?= oschina/mcp-gitee-ent
+GITEE_API_PREFIX ?= https://$(GITEE_HOSTNAME)/api/v5
+RELEASE_NOTES_DIR ?= release-notes
+PREVIOUS_TAG ?=
+RELEASE_NOTE_LANGUAGE ?= Simplified Chinese
+RELEASE_NOTE_AI ?= 1
+RELEASE_NOTE_FORCE ?= 0
 
-# Repository information
-GITEE_OWNER ?= "oschina"
-GITEE_REPO ?= "mcp-gitee-ent"
+RELEASE_VERSION := $(patsubst v%,%,$(VERSION))
+RELEASE_TAG := v$(RELEASE_VERSION)
+RELEASE_NAME := $(RELEASE_TAG) 版本发布
+RELEASE_NOTES_FILE ?= $(RELEASE_NOTES_DIR)/$(RELEASE_TAG).md
+RELEASE_DIR_ABS := $(abspath $(RELEASE_DIR))
 
-# Flags
-LDFLAGS = -ldflags "-s -w"
-BUILD_FLAGS = -o bin/mcp-gitee-ent $(LDFLAGS)
+GIT_TAG := $(shell git describe --tags --exact-match 2>/dev/null)
+GIT_COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || printf unknown)
+GIT_COMMIT_FULL := $(shell git rev-parse HEAD 2>/dev/null || printf unknown)
+GIT_VERSION := $(if $(GIT_TAG),$(patsubst v%,%,$(GIT_TAG)),dev+$(GIT_COMMIT))
+BUILD_VERSION ?= $(GIT_VERSION)
+BUILD_FLAGS = -trimpath -ldflags "-s -w -X gitee.com/oschina/mcp-gitee-ent/utils.Version=$(BUILD_VERSION)"
+NPM_BUILD_DIR := $(abspath tmp/npm-binaries)
 
-define show_usage_info
-	@echo "\033[32m\n🤖🤖 Build Success 🤖🤖\033[0m"
-	@echo "\033[32mExecutable path: $(shell pwd)/bin/mcp-gitee-ent\033[0m"
-	@echo "\033[33m\nUsage: ./bin/mcp-gitee-ent [options]\033[0m"
-	@echo "\033[33mAvailable options:\033[0m"
-	@echo "\033[33m  --token=<token>       Gitee access token (or set GITEE_ENT_MCP_ACCESS_TOKEN env)\033[0m"
-	@echo "\033[33m  --api-base=<url>      Gitee Enterprise API base URL (or set GITEE_ENT_API_BASE env)\033[0m"
-	@echo "\033[33m  --version             Show version information\033[0m"
-	@echo "\033[33mExample: ./bin/mcp-gitee-ent --token=your_access_token\033[0m"
-	@echo "\033[33mExample with env: GITEE_ENT_MCP_ACCESS_TOKEN=your_token ./bin/mcp-gitee-ent\033[0m"
-endef
+.PHONY: build clean test tidy build-all-platforms npm-copy-binaries npm-publish \
+	clean-release release-version-check release-check release release-note release-publish
 
 build:
-	$(GO) build $(BUILD_FLAGS) -v main.go
-	@echo "Build complete."
-	$(call show_usage_info)
+	@mkdir -p bin
+	@$(GO) build $(BUILD_FLAGS) -o bin/$(BINARY_NAME) .
+	@echo "Build complete: bin/$(BINARY_NAME) ($(BUILD_VERSION))"
 
-# Clean up generated binaries
 clean:
-	rm -f bin/mcp-gitee-ent
-	@echo "Clean up complete."
+	@rm -rf bin
+	@echo "Clean complete."
 
+test:
+	@$(GO) test ./...
 
-.PHONY: build-all-platforms
+tidy:
+	@$(GO) mod tidy
+
+release-version-check:
+	@test -n "$(strip $(RELEASE_VERSION))" || { echo "VERSION is required (for example: make release VERSION=0.2.0)" >&2; exit 2; }
+	@printf '%s\n' "$(RELEASE_VERSION)" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$$' || { echo "VERSION must be valid SemVer without build metadata: $(VERSION)" >&2; exit 2; }
+
+release-check: release-version-check
+	@test -z "$$(git status --porcelain)" || { echo "Working tree must be clean before building a release" >&2; exit 2; }
+	@git tag --points-at HEAD | grep -Fqx "$(RELEASE_TAG)" || { echo "HEAD must be tagged $(RELEASE_TAG) before building a release" >&2; exit 2; }
+	@test "$$(git cat-file -t "$(RELEASE_TAG)")" = "tag" || { echo "$(RELEASE_TAG) must be an annotated tag" >&2; exit 2; }
+	@unformatted="$$(gofmt -l .)"; test -z "$$unformatted" || { echo "Go files are not formatted:" >&2; printf '%s\n' "$$unformatted" >&2; exit 2; }
+	@git diff --check
+	@$(GO) mod tidy -diff
+	@$(GO) test ./...
+	@$(GO) test -race ./...
+	@$(GO) vet ./...
+
 build-all-platforms:
-	$(foreach os,$(OSES),$(foreach arch,$(ARCHS), \
-		GOOS=$(os) GOARCH=$(arch) go build $(BUILD_FLAGS) -o $(BINARY_NAME)-$(os)-$(arch)$(if $(findstring windows,$(os)),.exe,) main.go; \
-	))
-
-.PHONY: npm-copy-binaries
-npm-copy-binaries: build-all-platforms
-	$(foreach os,$(OSES),$(foreach arch,$(ARCHS), \
-		EXECUTABLE=./$(BINARY_NAME)-$(os)-$(arch)$(if $(findstring windows,$(os)),.exe,); \
-		DIRNAME=$(BINARY_NAME)-$(os)-$(arch); \
-		mkdir -p ./npm/$$DIRNAME/bin; \
-		cp $$EXECUTABLE ./npm/$$DIRNAME/bin/; \
-	))
-
-.PHONY: npm-publish
-npm-publish: npm-copy-binaries ## Publish the npm packages
-	$(foreach os,$(OSES),$(foreach arch,$(ARCHS), \
-		DIRNAME="$(BINARY_NAME)-$(os)-$(arch)"; \
-		cd npm/$$DIRNAME; \
-		echo '//registry.npmjs.org/:_authToken=$(NPM_TOKEN)' >> .npmrc; \
-		jq '.version = "$(NPM_VERSION)"' package.json > tmp.json && mv tmp.json package.json; \
-		npm publish; \
-		cd ../..; \
-	))
-	cp README.md LICENSE ./npm/mcp-gitee-ent/
-	echo '//registry.npmjs.org/:_authToken=$(NPM_TOKEN)' >> ./npm/mcp-gitee-ent/.npmrc
-	jq '.version = "$(NPM_VERSION)"' ./npm/mcp-gitee-ent/package.json > tmp.json && mv tmp.json ./npm/mcp-gitee-ent/package.json; \
-	jq '.optionalDependencies |= with_entries(.value = "$(NPM_VERSION)")' ./npm/mcp-gitee-ent/package.json > tmp.json && mv tmp.json ./npm/mcp-gitee-ent/package.json; \
-	cd npm/mcp-gitee-ent && npm publish
-
-
-# Clean up release directory
-clean-release:
-	rm -rf release
-	@echo "Clean up release directory complete."
-
-# Create a tarball for the given platform
-define create_tarball
-	@echo "Packaging for $(1)..."
-	@mkdir -p release/$(1)
-	@cp bin/mcp-gitee-ent release/$(1)/mcp-gitee-ent$(2)
-	@cp LICENSE release/$(1)/
-	@cp README.md release/$(1)/
-	@cp README_CN.md release/$(1)/
-	@tar -czvf release/mcp-gitee-ent-$(1).tar.gz -C release/$(1) .
-	@rm -rf release/$(1)
-endef
-
-release: clean clean-release
-	@mkdir -p release
-	@echo "Building for Linux..."
-	GOOS=linux GOARCH=amd64 $(GO) build $(BUILD_FLAGS) -v main.go
-	$(call create_tarball,linux-amd64,)
-	@echo "Building for Windows..."
-	GOOS=windows GOARCH=amd64 $(GO) build $(BUILD_FLAGS) -v main.go
-	$(call create_tarball,windows-amd64,.exe)
-	@echo "Building for macOS..."
-	GOOS=darwin GOARCH=amd64 $(GO) build $(BUILD_FLAGS) -v main.go
-	$(call create_tarball,darwin-amd64,)
-	@echo "Building for macOS ARM..."
-	GOOS=darwin GOARCH=arm64 $(GO) build $(BUILD_FLAGS) -v main.go
-	$(call create_tarball,darwin-arm64,)
-	@echo "Building for Linux ARM..."
-	GOOS=linux GOARCH=arm $(GO) build $(BUILD_FLAGS) -v main.go
-	$(call create_tarball,linux-arm,)
-	@echo "Release complete. Artifacts are in the release directory."
-
-# Upload artifacts to a specific release
-upload-gitee-release:
-	@echo "Uploading artifacts to gitee release..."
-	@for file in release/*; do \
-		curl -X POST \
-			-H "Content-Type: multipart/form-data" \
-			-F "access_token=$(GITEE_ENT_MCP_ACCESS_TOKEN)" \
-			-F "owner=$(GITEE_OWNER)" \
-			-F "repo=$(GITEE_REPO)" \
-			-F "release_id=$(GITEE_RELEASE_ID)" \
-			-F "file=@$$file" \
-			https://gitee.com/api/v5/repos/$(GITEE_OWNER)/$(GITEE_REPO)/releases/$(GITEE_RELEASE_ID)/attach_files; \
+	@set -eu; \
+	mkdir -p "$(BUILD_OUTPUT_DIR)"; \
+	for os in $(OSES); do \
+		for arch in $(ARCHS); do \
+			ext=""; \
+			if [ "$$os" = "windows" ]; then ext=".exe"; fi; \
+			echo "Building $$os/$$arch..."; \
+			CGO_ENABLED=0 GOOS="$$os" GOARCH="$$arch" $(GO) build $(BUILD_FLAGS) \
+				-o "$(BUILD_OUTPUT_DIR)/$(BINARY_NAME)-$$os-$$arch$$ext" .; \
+		done; \
 	done
-	@echo "Upload complete."
+
+clean-release:
+	@rm -rf "$(RELEASE_DIR)"
+	@echo "Release directory cleaned."
+
+release: release-check clean-release
+	@mkdir -p "$(RELEASE_DIR)"
+	@$(MAKE) build-all-platforms BUILD_OUTPUT_DIR="$(RELEASE_DIR_ABS)/binaries" BUILD_VERSION="$(RELEASE_VERSION)"
+	@echo "Building linux/arm (GOARM=7)..."
+	@CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=7 $(GO) build \
+		-trimpath -ldflags "-s -w -X gitee.com/oschina/mcp-gitee-ent/utils.Version=$(RELEASE_VERSION)" \
+		-o "$(RELEASE_DIR_ABS)/binaries/$(BINARY_NAME)-linux-arm" .
+	@set -eu; \
+	stage_root="$(RELEASE_DIR_ABS)/stage"; \
+	mkdir -p "$$stage_root"; \
+	for target in $(RELEASE_TARGETS); do \
+		os=$$(printf '%s' "$$target" | cut -d- -f1); \
+		arch=$$(printf '%s' "$$target" | cut -d- -f2); \
+		ext=""; binary="$(BINARY_NAME)"; \
+		if [ "$$os" = "windows" ]; then ext=".exe"; binary="$(BINARY_NAME).exe"; fi; \
+		source="$(RELEASE_DIR_ABS)/binaries/$(BINARY_NAME)-$$os-$$arch$$ext"; \
+		stage="$$stage_root/$$target"; \
+		mkdir -p "$$stage"; \
+		cp "$$source" "$$stage/$$binary"; \
+		cp README.md README_CN.md LICENSE "$$stage/"; \
+		tar -czf "$(RELEASE_DIR_ABS)/$(BINARY_NAME)-$$target.tar.gz" \
+			-C "$$stage" README.md README_CN.md LICENSE "$$binary"; \
+	done; \
+	rm -rf "$(RELEASE_DIR_ABS)/binaries" "$$stage_root"
+	@cd "$(RELEASE_DIR)" && if command -v sha256sum >/dev/null 2>&1; then \
+		sha256sum ./*.tar.gz > checksums.txt; \
+	else \
+		shasum -a 256 ./*.tar.gz > checksums.txt; \
+	fi
+	@echo "Release artifacts ready in $(RELEASE_DIR)/ for $(RELEASE_TAG)."
+
+release-note: release-version-check
+	@GITEE_BIN="$(GITEE)" \
+		RELEASE_TAG="$(RELEASE_TAG)" \
+		PREVIOUS_TAG="$(PREVIOUS_TAG)" \
+		RELEASE_NOTES_FILE="$(RELEASE_NOTES_FILE)" \
+		RELEASE_NOTE_LANGUAGE="$(RELEASE_NOTE_LANGUAGE)" \
+		RELEASE_NOTE_AI="$(RELEASE_NOTE_AI)" \
+		RELEASE_NOTE_FORCE="$(RELEASE_NOTE_FORCE)" \
+		./scripts/generate-release-note.sh
+
+release-publish: release-version-check
+	@command -v curl >/dev/null 2>&1 || { echo "curl is required to publish release artifacts" >&2; exit 2; }
+	@command -v jq >/dev/null 2>&1 || { echo "jq is required to publish release artifacts" >&2; exit 2; }
+	@command -v "$(GITEE)" >/dev/null 2>&1 || { echo "$(GITEE) is required to publish the Gitee Release" >&2; exit 2; }
+	@test -s "$(RELEASE_NOTES_FILE)" || { echo "Release notes not found: $(RELEASE_NOTES_FILE)" >&2; echo "Run make release-note VERSION=$(RELEASE_VERSION), review the draft, and commit it before publishing." >&2; exit 2; }
+	@remote_target="$$(git ls-remote origin "refs/tags/$(RELEASE_TAG)^{}" | awk '{print $$1}')"; \
+		test "$$remote_target" = "$(GIT_COMMIT_FULL)" || { echo "Push annotated tag $(RELEASE_TAG) for $(GIT_COMMIT_FULL) to origin before publishing" >&2; exit 2; }
+	@$(MAKE) release VERSION="$(VERSION)" RELEASE_DIR="$(RELEASE_DIR)"
+	@GITEE_BIN="$(GITEE)" \
+		GITEE_HOSTNAME="$(GITEE_HOSTNAME)" \
+		GITEE_REPO="$(GITEE_REPO)" \
+		GITEE_API_PREFIX="$(GITEE_API_PREFIX)" \
+		RELEASE_TAG="$(RELEASE_TAG)" \
+		RELEASE_NAME="$(RELEASE_NAME)" \
+		RELEASE_TARGET="$(GIT_COMMIT_FULL)" \
+		RELEASE_NOTES_FILE="$(RELEASE_NOTES_FILE)" \
+		RELEASE_DIR="$(RELEASE_DIR_ABS)" \
+		./scripts/publish-release.sh
+
+npm-copy-binaries:
+	@rm -rf "$(NPM_BUILD_DIR)"
+	@mkdir -p "$(NPM_BUILD_DIR)"
+	@$(MAKE) build-all-platforms BUILD_OUTPUT_DIR="$(NPM_BUILD_DIR)"
+	@set -eu; \
+	for os in $(OSES); do \
+		for arch in $(ARCHS); do \
+			ext=""; \
+			if [ "$$os" = "windows" ]; then ext=".exe"; fi; \
+			name="$(BINARY_NAME)-$$os-$$arch"; \
+			mkdir -p "npm/$$name/bin"; \
+			cp "$(NPM_BUILD_DIR)/$$name$$ext" "npm/$$name/bin/$$name$$ext"; \
+		done; \
+	done; \
+	rm -rf "$(NPM_BUILD_DIR)"
+	@echo "Binaries copied to npm platform packages."
+
+npm-publish: npm-copy-binaries
+	@NPM_VERSION="$(NPM_VERSION)" NPM_TOKEN="$(NPM_TOKEN)" NPM_TAG="$(NPM_TAG)" NPM_DRY_RUN="$(NPM_DRY_RUN)" ./scripts/publish-npm.sh
+	@echo "npm publish complete."

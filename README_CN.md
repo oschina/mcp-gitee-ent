@@ -6,7 +6,7 @@ Gitee 企业版 MCP 服务器是一个用于 Gitee 企业版的模型上下文�
 
 ## 功能特性
 
-- 与 Gitee 企业版仓库、问题、拉取请求交互
+- 与 Gitee 企业版仓库、问题、拉取请求和知识库文档交互
 - 支持企业级操作和管理
 - 可配置的 API 基础 URL，支持不同的 Gitee 企业版实例
 - 支持 SSE 和 Stdio 两种传输方式
@@ -81,7 +81,8 @@ mcp-gitee-ent --version
       ],
       "env": {
          "GITEE_ENT_API_BASE": "https://api.gitee.com/enterprises",
-         "GITEE_ENT_MCP_ACCESS_TOKEN": "<your mcp ent access token>"
+         "GITEE_ENT_MCP_ACCESS_TOKEN": "<your mcp ent access token>",
+         "GITEE_ENT_MCP_ALLOWED_FILE_ROOTS": "/允许访问的绝对路径"
       }
     }
   }
@@ -96,6 +97,7 @@ mcp-gitee-ent --version
       "env": {
         "GITEE_ENT_API_BASE": "https://api.gitee.com/enterprises",
         "GITEE_ENT_MCP_ACCESS_TOKEN": "<your mcp ent access token>",
+        "GITEE_ENT_MCP_ALLOWED_FILE_ROOTS": "/允许访问的绝对路径"
       }
     }
   }
@@ -118,8 +120,20 @@ mcp-gitee-ent --version
 
 - `GITEE_ENT_MCP_ACCESS_TOKEN`: Gitee MCP 企业版访问令牌
 - `GITEE_ENT_API_BASE`: Gitee 企业版 API 基础 URL
+- `GITEE_ENT_MCP_ALLOWED_FILE_ROOTS`: 文档上传和下载允许访问的绝对目录。多个目录使用操作系统的路径列表分隔符分隔（Unix 为 `:`，Windows 为 `;`）。默认仅允许服务器的当前工作目录。
 - `ENABLED_TOOLSETS`: 逗号分隔的要启用的工具列表
 - `DISABLED_TOOLSETS`: 逗号分隔的要禁用的工具列表
+
+#### 文档文件访问范围
+
+| 配置 | 实际允许范围 |
+|------|-------------|
+| 未设置 | MCP 服务器进程的当前工作目录及其子目录 |
+| Unix/macOS 上设置为 `/` | MCP 服务器进程有权访问的任意已存在路径 |
+| Windows 上设置为 `C:\;D:\` | 所列磁盘中进程有权访问的任意路径 |
+| Unix/macOS 上设置为 `/srv/gitee-imports:/srv/gitee-exports` | 仅允许所列目录及其子目录 |
+
+配置项必须是已存在的绝对目录。范围校验前会解析符号链接，操作系统权限、容器挂载和沙箱限制仍然有效。将文件系统根目录加入白名单会赋予文档工具很大的本地读写范围，只应在可信的本机 MCP 服务中使用；共享或远程部署应配置专用的导入、导出目录。
 
 ### 工具集管理
 
@@ -176,6 +190,39 @@ mcp-gitee-ent --version
 | **list_scrum_versions**            | 项目           | 列出 Scrum 版本 |
 | **list_issue_types**               | 工作项类型        | 列出工作项类型     |
 | **list_issue_type_states**         | 工作项状态        | 列出工作项状态     |
+| **list_enterprise_documents** | 文档 | 列出可访问的企业知识库文档 |
+| **list_enterprise_document_pages** | 文档 | 列出文档页面并将页面树展开为路径 |
+| **get_enterprise_document_page** | 文档 | 获取文档页面源码和元数据 |
+| **upload_enterprise_document_files** | 文档 | 将本地 ZIP、HTML、TXT 或 Markdown 文件导入文档 |
+| **download_enterprise_document** | 文档 | 将文档以 Markdown、HTML 或 PDF 导出到本地目录 |
+| **update_enterprise_document_page** | 文档 | 使用版本前置条件完整替换页面内容 |
+
+### 企业文档使用流程
+
+1. 调用 `list_enterprises` 获取目标企业的 `enterprise_id`。
+2. 调用 `list_enterprise_documents`，将返回的 `document_id` 用于其他文档工具。需要查询项目文档时传入 `program_id`，需要缩小范围时可设置 `created_by_me=true`。
+3. 调用 `list_enterprise_document_pages`，获取页面的 `page_id`、展开后的路径、内容类型和当前版本。
+4. 编辑前立即调用 `get_enterprise_document_page`。保持返回内容的原始表示，并将其版本作为 `expected_version` 传给 `update_enterprise_document_page`。
+
+`document_id` 对应底层的 `WikiInfo.id`。`document_node_id` 表示文档在企业知识库目录树中的节点，仅作为元数据返回。`page_id` 表示文档内部的页面或文件夹。
+
+文档权限由 Gitee 企业版校验。`list_enterprise_documents` 返回的文档对当前认证用户仍可能是只读的。
+
+#### 上传与文件访问
+
+- `upload_enterprise_document_files` 只向已有文档新增页面，不会创建文档。它支持 1 到 20 个扩展名为 `.zip`、`.html`、`.txt` 或 `.md` 的绝对路径；每个文件不得超过 6 MiB，导入内容最多包含 20 个页面。
+- 上传和下载路径均指 MCP 服务器所在机器，而不是 Agent 用户的远程机器。路径必须是绝对路径，解析后位于 `GITEE_ENT_MCP_ALLOWED_FILE_ROOTS` 内，并且已经存在；下载目标必须是目录。
+- 导入可能异步完成。上传后应再次调用 `list_enterprise_document_pages` 或 `get_enterprise_document_page`，获取新页面的最终版本后再进行更新。
+
+#### 导出与更新保护
+
+- Markdown 和 HTML 导出可能是 ZIP 压缩包，PDF 导出为 PDF 文件。`download_enterprise_document` 默认不会覆盖已有路径，只有显式设置 `overwrite=true` 时才会覆盖。
+- `update_enterprise_document_page` 会完整替换页面内容，而不是应用补丁。空 `content` 会清空页面；工具会重新读取页面，并在 `expected_version` 已过期时拒绝更新。
+- `page_name` 可用于重命名页面，`mentioned_user_ids` 接受 `list_enterprise_members` 返回的企业用户 ID。
+
+## 发布
+
+仓库提供了可重复执行的本地发布流程：校验并构建带标签的源码、创建或复用 Gitee Release、同步发布说明并上传缺失附件。完整步骤见 [docs/releasing.md](docs/releasing.md)。npm 发布保持为独立且可续传的步骤。
 
 ## 贡献
 

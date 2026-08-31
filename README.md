@@ -6,7 +6,7 @@ Gitee Enterprise MCP Server is a Model Context Protocol (MCP) server implementat
 
 ## Features
 
-- Interact with Gitee Enterprise repositories, issues, pull requests
+- Interact with Gitee Enterprise repositories, issues, pull requests, and knowledge-base documents
 - Support for enterprise-level operations and management
 - Configurable API base URL to support different Gitee Enterprise instances
 - Support for SSE and Stdio transport
@@ -81,7 +81,8 @@ Config example:
       ],
       "env": {
          "GITEE_ENT_API_BASE": "https://api.gitee.com/enterprises",
-         "GITEE_ENT_MCP_ACCESS_TOKEN": "<your mcp ent access token>"
+         "GITEE_ENT_MCP_ACCESS_TOKEN": "<your mcp ent access token>",
+         "GITEE_ENT_MCP_ALLOWED_FILE_ROOTS": "/absolute/path/to/allowed/files"
       }
     }
   }
@@ -96,6 +97,7 @@ Config example:
       "env": {
         "GITEE_ENT_API_BASE": "https://api.gitee.com/enterprises",
         "GITEE_ENT_MCP_ACCESS_TOKEN": "<your mcp ent access token>",
+        "GITEE_ENT_MCP_ALLOWED_FILE_ROOTS": "/absolute/path/to/allowed/files"
       }
     }
   }
@@ -118,8 +120,20 @@ You can also configure the server using environment variables:
 
 - `GITEE_ENT_MCP_ACCESS_TOKEN`: Gitee MCP ent access token
 - `GITEE_ENT_API_BASE`: Gitee ENT API base URL
+- `GITEE_ENT_MCP_ALLOWED_FILE_ROOTS`: Allowed absolute directories for document upload and download. Separate multiple directories with the operating system path-list separator (`:` on Unix, `;` on Windows). Defaults to the server's current working directory.
 - `ENABLED_TOOLSETS`: Comma-separated list of tools to enable
 - `DISABLED_TOOLSETS`: Comma-separated list of tools to disable
+
+#### Document File Access Scope
+
+| Configuration | Effective scope |
+|---------------|-----------------|
+| Not set | The MCP server process's current working directory and its descendants |
+| `/` on Unix/macOS | Any existing path that the MCP server process can access |
+| `C:\;D:\` on Windows | Any accessible path on the listed drives |
+| `/srv/gitee-imports:/srv/gitee-exports` on Unix/macOS | Only the listed directories and their descendants |
+
+Configured roots must be existing absolute directories. Symbolic links are resolved before the scope check, and operating-system permissions, container mounts, and sandbox restrictions still apply. Setting a filesystem root grants the document tools broad local read/write access, so use it only for a trusted local MCP server; use dedicated import and export directories for shared or remote deployments.
 
 ### Toolset Management
 
@@ -176,6 +190,39 @@ The server provides various tools for interacting with Gitee Enterprise:
 | **list_scrum_versions**  | Program        | List Scrum Versions |
 | **list_issue_types**     | Issue Type   | List issue types |
 | **list_issue_type_states** | Issue State | List issue states |
+| **list_enterprise_documents** | Document | List accessible enterprise knowledge-base documents |
+| **list_enterprise_document_pages** | Document | List and flatten a document's page tree |
+| **get_enterprise_document_page** | Document | Get a document page's source content and metadata |
+| **upload_enterprise_document_files** | Document | Import local ZIP, HTML, TXT, or Markdown files into a document |
+| **download_enterprise_document** | Document | Export a document as Markdown, HTML, or PDF to a local directory |
+| **update_enterprise_document_page** | Document | Replace a page's content with a version precondition |
+
+### Enterprise Document Workflow
+
+1. Call `list_enterprises` to resolve the target `enterprise_id`.
+2. Call `list_enterprise_documents` and use its `document_id` in the other document tools. Use `program_id` for program documents or `created_by_me=true` to limit the result when needed.
+3. Call `list_enterprise_document_pages` to resolve a page's `page_id`, flattened path, content type, and current version.
+4. Call `get_enterprise_document_page` immediately before editing. Preserve the returned content representation and pass its version as `expected_version` to `update_enterprise_document_page`.
+
+`document_id` is the underlying `WikiInfo.id`. `document_node_id` identifies the document's location in the enterprise knowledge-base tree and is returned only as metadata. `page_id` identifies a page or folder inside the document.
+
+Document permissions are enforced by Gitee Enterprise. A document returned by `list_enterprise_documents` may still be read-only for the authenticated user.
+
+#### Upload and File Access
+
+- `upload_enterprise_document_files` adds pages to an existing document; it does not create a document. It accepts 1 to 20 absolute paths with `.zip`, `.html`, `.txt`, or `.md` extensions. Each file must be no larger than 6 MiB, and imported content may contain at most 20 pages.
+- Upload and download paths refer to the machine running this MCP server, not the Agent user's remote machine. Paths must be absolute, resolve inside `GITEE_ENT_MCP_ALLOWED_FILE_ROOTS`, and already exist. The download destination must be a directory.
+- Import processing may finish asynchronously. After an upload, call `list_enterprise_document_pages` or `get_enterprise_document_page` again to obtain the imported page's final version before updating it.
+
+#### Export and Update Safety
+
+- Markdown and HTML exports may be ZIP archives; PDF exports are PDF files. `download_enterprise_document` does not overwrite an existing path unless `overwrite=true` is explicitly supplied.
+- `update_enterprise_document_page` performs a complete content replacement, not a patch. An empty `content` value clears the page. The tool re-reads the page and rejects the update when `expected_version` is stale.
+- `page_name` optionally renames the page, and `mentioned_user_ids` accepts enterprise user IDs returned by `list_enterprise_members`.
+
+## Release
+
+The repository provides a repeatable local release workflow that validates and builds tagged source, creates or reuses a Gitee Release, synchronizes its release notes, and uploads missing artifacts. See [docs/releasing.md](docs/releasing.md). npm publishing remains a separate resumable step.
 
 ## Contribution
 

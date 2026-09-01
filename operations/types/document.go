@@ -1,5 +1,31 @@
 package types
 
+import (
+	"regexp"
+	"strings"
+)
+
+// searchHighlightTagRegexp matches the <em class="gitee-highlight-keyword">
+// highlight tags that Gitee injects into keyword-search results.
+var searchHighlightTagRegexp = regexp.MustCompile(`</?em[^>]*>`)
+
+// StripSearchHighlight removes highlight markup and trims the value.
+func StripSearchHighlight(value string) string {
+	return strings.TrimSpace(searchHighlightTagRegexp.ReplaceAllString(value, ""))
+}
+
+const searchContentPreviewRunes = 300
+
+// SearchContentPreview strips highlight markup, collapses whitespace, and
+// truncates the value so a full page body is never returned as a preview.
+func SearchContentPreview(value string) string {
+	cleaned := strings.Join(strings.Fields(StripSearchHighlight(value)), " ")
+	if runes := []rune(cleaned); len(runes) > searchContentPreviewRunes {
+		return string(runes[:searchContentPreviewRunes]) + "…"
+	}
+	return cleaned
+}
+
 type DocumentNode struct {
 	ID         int           `json:"id"`
 	ParentID   int           `json:"parent_id"`
@@ -153,4 +179,51 @@ type DocumentDownloadResponse struct {
 	Filename    string `json:"filename"`
 	Size        int64  `json:"size"`
 	ContentType string `json:"content_type,omitempty"`
+}
+
+// DocumentSearchNode is one page-level hit returned by
+// GET /{enterprise_id}/doc_nodes/search. Name and Content may carry highlight
+// markup; name is absent when the server falls back to database search.
+type DocumentSearchNode struct {
+	ID            int        `json:"id"`
+	Name          string     `json:"name"`
+	Content       string     `json:"content"`
+	InfoID        int        `json:"info_id"`
+	InfoName      string     `json:"info_name"`
+	DocPath       string     `json:"doc_path"`
+	DocID         int        `json:"doc_id"`
+	Creator       *BasicUser `json:"creator"`
+	LastUpdatedAt string     `json:"last_updated_at"`
+}
+
+type DocumentSearchHit struct {
+	DocumentID     int        `json:"document_id"`
+	DocumentNodeID int        `json:"document_node_id"`
+	DocumentName   string     `json:"document_name"`
+	DocumentPath   string     `json:"document_path"`
+	PageID         int        `json:"page_id"`
+	PageName       string     `json:"page_name,omitempty"`
+	ContentPreview string     `json:"content_preview,omitempty"`
+	Creator        *BasicUser `json:"creator,omitempty"`
+	UpdatedAt      string     `json:"updated_at,omitempty"`
+}
+
+type DocumentSearchResponse struct {
+	Search     string              `json:"search"`
+	TotalCount int                 `json:"total_count"`
+	Hits       []DocumentSearchHit `json:"hits"`
+}
+
+func NewDocumentSearchHit(node DocumentSearchNode) DocumentSearchHit {
+	return DocumentSearchHit{
+		DocumentID:     node.InfoID,
+		DocumentNodeID: node.DocID,
+		DocumentName:   StripSearchHighlight(node.InfoName),
+		DocumentPath:   node.DocPath,
+		PageID:         node.ID,
+		PageName:       StripSearchHighlight(node.Name),
+		ContentPreview: SearchContentPreview(node.Content),
+		Creator:        node.Creator,
+		UpdatedAt:      node.LastUpdatedAt,
+	}
 }

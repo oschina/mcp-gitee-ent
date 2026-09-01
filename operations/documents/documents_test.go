@@ -98,6 +98,128 @@ func TestListDocumentsNormalizesIDsAndQuery(t *testing.T) {
 	}
 }
 
+func TestListDocumentsSearchMapsPageHits(t *testing.T) {
+	long := strings.Repeat("内", 400)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		if req.Method != http.MethodGet || req.URL.Path != "/7/doc_nodes/search" {
+			t.Fatalf("request = %s %s, want GET /7/doc_nodes/search", req.Method, req.URL.Path)
+		}
+		wantQuery := map[string][]string{"page": {"2"}, "search": {"部署"}, "sort": {"name"}}
+		if got := map[string][]string(req.URL.Query()); !reflect.DeepEqual(got, wantQuery) {
+			t.Errorf("query = %#v, want %#v", got, wantQuery)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `{"total_count":3,"data":[`+
+			`{"id":11,"name":"<em class=\"gitee-highlight-keyword\">部署</em>流程","content":"a\n b\t<em>c</em>","info_id":42,"info_name":"发布手册","doc_path":"Release/发布手册","doc_id":91,"creator":{"id":5,"username":"alice","name":"Alice"},"last_updated_at":"2026-08-30 10:00"},`+
+			`{"id":12,"name":null,"content":null,"info_id":42,"info_name":"发布手册","doc_path":"Release/发布手册","doc_id":null,"creator":null,"last_updated_at":"2026-08-31 09:00"},`+
+			`{"id":13,"name":"ops","content":"`+long+`","info_id":43,"info_name":"Runbook","doc_path":"Ops/Runbook","doc_id":92,"creator":null,"last_updated_at":"2026-08-31 11:00"}]}`)
+	}))
+	defer server.Close()
+
+	result, err := ListDocumentsHandleFunc(context.Background(), toolRequest(map[string]interface{}{
+		"enterprise_id": 7,
+		"search":        "  部署  ",
+		"sort":          "name",
+		"page":          2,
+	}), documentTestOptions(server)...)
+	if err != nil {
+		t.Fatalf("ListDocumentsHandleFunc() error = %v", err)
+	}
+
+	response := types.DocumentSearchResponse{}
+	toolResultJSON(t, result, &response)
+	if response.Search != "部署" || response.TotalCount != 3 || len(response.Hits) != 3 {
+		t.Fatalf("response = %#v", response)
+	}
+	first := response.Hits[0]
+	if first.DocumentID != 42 || first.DocumentNodeID != 91 || first.PageID != 11 {
+		t.Fatalf("first hit IDs = %#v", first)
+	}
+	if first.DocumentName != "发布手册" || first.PageName != "部署流程" || first.ContentPreview != "a b c" {
+		t.Fatalf("first hit fields = %#v, want highlights stripped", first)
+	}
+	if first.Creator == nil || first.Creator.Username != "alice" {
+		t.Fatalf("first hit creator = %#v", first.Creator)
+	}
+
+	second := response.Hits[1]
+	if second.PageName != "" || second.ContentPreview != "" || second.DocumentNodeID != 0 || second.Creator != nil {
+		t.Fatalf("second hit = %#v, want null-tolerant normalization", second)
+	}
+
+	preview := []rune(response.Hits[2].ContentPreview)
+	if len(preview) != 301 || string(preview[300]) != "…" {
+		t.Fatalf("content preview runes = %d, want 301 including trailing ellipsis", len(preview))
+	}
+}
+
+func TestListDocumentsSearchRejectsUnsupportedParameters(t *testing.T) {
+	var requestCount atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		requestCount.Add(1)
+	}))
+	defer server.Close()
+
+	cases := []struct {
+		name string
+		key  string
+	}{
+		{name: "program_id", key: "program_id"},
+		{name: "created_by_me", key: "created_by_me"},
+		{name: "direction", key: "direction"},
+		{name: "per_page", key: "per_page"},
+	}
+	for _, test := range cases {
+		t.Run(test.name, func(t *testing.T) {
+			arguments := map[string]interface{}{"enterprise_id": 7, "search": "kw"}
+			switch test.key {
+			case "program_id":
+				arguments["program_id"] = 9
+			case "created_by_me":
+				arguments["created_by_me"] = true
+			case "direction":
+				arguments["direction"] = "desc"
+			case "per_page":
+				arguments["per_page"] = 20
+			}
+			result, err := ListDocumentsHandleFunc(context.Background(), toolRequest(arguments), documentTestOptions(server)...)
+			if !utils.IsParamError(err) {
+				t.Fatalf("error = %v, want parameter error", err)
+			}
+			if result == nil || !result.IsError {
+				t.Fatalf("result = %#v, want MCP error result", result)
+			}
+			if got := requestCount.Load(); got != 0 {
+				t.Fatalf("request count = %d, want 0", got)
+			}
+		})
+	}
+}
+
+func TestListDocumentsBlankSearchFallsBackToTile(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		if req.URL.Path != "/7/doc_nodes/tile" {
+			t.Fatalf("path = %s, want /7/doc_nodes/tile", req.URL.Path)
+		}
+		if req.URL.Query().Has("search") {
+			t.Errorf("query = %s, want no search parameter", req.URL.RawQuery)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `{"total_count":0,"data":[]}`)
+	}))
+	defer server.Close()
+
+	result, err := ListDocumentsHandleFunc(context.Background(), toolRequest(map[string]interface{}{
+		"enterprise_id": 7,
+		"search":        "   ",
+	}), documentTestOptions(server)...)
+	if err != nil {
+		t.Fatalf("ListDocumentsHandleFunc() error = %v", err)
+	}
+	response := types.DocumentListResponse{}
+	toolResultJSON(t, result, &response)
+}
+
 func TestListDocumentPagesFlattensTree(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		if req.Method != http.MethodGet || req.URL.Path != "/7/docs/42/files" {

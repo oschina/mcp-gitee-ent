@@ -190,7 +190,7 @@ The server provides various tools for interacting with Gitee Enterprise:
 | **list_scrum_versions**  | Program        | List Scrum Versions |
 | **list_issue_types**     | Issue Type   | List issue types |
 | **list_issue_type_states** | Issue State | List issue states |
-| **list_enterprise_documents** | Document | List accessible enterprise knowledge-base documents |
+| **list_enterprise_documents** | Document | List or search accessible enterprise knowledge-base documents |
 | **list_enterprise_document_pages** | Document | List and flatten a document's page tree |
 | **get_enterprise_document_page** | Document | Get a document page's source content and metadata |
 | **upload_enterprise_document_files** | Document | Import local ZIP, HTML, TXT, or Markdown files into a document |
@@ -201,6 +201,7 @@ The server provides various tools for interacting with Gitee Enterprise:
 
 1. Call `list_enterprises` to resolve the target `enterprise_id`.
 2. Call `list_enterprise_documents` and use its `document_id` in the other document tools. Use `program_id` for program documents or `created_by_me=true` to limit the result when needed.
+   - To find documents by keyword, pass `search`. The server matches document names and page names (and page content when full-text search is enabled) and returns page-level hits, each carrying its `document_id` and `page_id`; the result is ordered by the sort field descending with a server-fixed page size, so `program_id`, `created_by_me`, `direction`, and `per_page` cannot be combined with `search`.
 3. Call `list_enterprise_document_pages` to resolve a page's `page_id`, flattened path, content type, and current version.
 4. Call `get_enterprise_document_page` immediately before editing. Preserve the returned content representation and pass its version as `expected_version` to `update_enterprise_document_page`.
 

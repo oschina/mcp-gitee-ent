@@ -638,7 +638,7 @@ func TestCreateDocumentValidatesParameters(t *testing.T) {
 	}
 }
 
-func TestCreateDocumentPagePostsPayloadAndMapsResponse(t *testing.T) {
+func TestCreateDocumentNodeCreatesPage(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		if req.Method != http.MethodPost || req.URL.Path != "/7/docs/42/create_file" {
 			t.Fatalf("request = %s %s, want POST /7/docs/42/create_file", req.Method, req.URL.Path)
@@ -657,14 +657,15 @@ func TestCreateDocumentPagePostsPayloadAndMapsResponse(t *testing.T) {
 	}))
 	defer server.Close()
 
-	result, err := CreateDocumentPageHandleFunc(context.Background(), toolRequest(map[string]interface{}{
+	result, err := CreateDocumentNodeHandleFunc(context.Background(), toolRequest(map[string]interface{}{
 		"enterprise_id": 7,
 		"document_id":   42,
+		"type":          "page",
 		"name":          "  Setup  ",
 		"parent_id":     3,
 	}), documentTestOptions(server)...)
 	if err != nil {
-		t.Fatalf("CreateDocumentPageHandleFunc() error = %v", err)
+		t.Fatalf("CreateDocumentNodeHandleFunc() error = %v", err)
 	}
 
 	response := types.DocumentPageResponse{}
@@ -681,40 +682,7 @@ func TestCreateDocumentPagePostsPayloadAndMapsResponse(t *testing.T) {
 	}
 }
 
-func TestCreateDocumentPageSendsEmptyPayloadWithoutNameOrParent(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		if req.Method != http.MethodPost || req.URL.Path != "/7/docs/42/create_file" {
-			t.Fatalf("request = %s %s, want POST /7/docs/42/create_file", req.Method, req.URL.Path)
-		}
-		body, _ := io.ReadAll(req.Body)
-		got := map[string]interface{}{}
-		if err := json.Unmarshal(body, &got); err != nil {
-			t.Fatalf("decode request body %q: %v", body, err)
-		}
-		if len(got) != 0 {
-			t.Errorf("payload = %#v, want empty", got)
-		}
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = io.WriteString(w, `{"id":12,"name":"untitled","parent_id":0,"file_type":1,"content_type":"markdown"}`)
-	}))
-	defer server.Close()
-
-	result, err := CreateDocumentPageHandleFunc(context.Background(), toolRequest(map[string]interface{}{
-		"enterprise_id": 7,
-		"document_id":   42,
-		"name":          "   ",
-	}), documentTestOptions(server)...)
-	if err != nil {
-		t.Fatalf("CreateDocumentPageHandleFunc() error = %v", err)
-	}
-	response := types.DocumentPageResponse{}
-	toolResultJSON(t, result, &response)
-	if response.Page.PageID != 12 {
-		t.Fatalf("page_id = %d, want 12", response.Page.PageID)
-	}
-}
-
-func TestCreateDocumentFolderPostsPayloadAndMapsFolderType(t *testing.T) {
+func TestCreateDocumentNodeCreatesFolder(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		if req.Method != http.MethodPost || req.URL.Path != "/7/docs/42/create_folder" {
 			t.Fatalf("request = %s %s, want POST /7/docs/42/create_folder", req.Method, req.URL.Path)
@@ -733,13 +701,14 @@ func TestCreateDocumentFolderPostsPayloadAndMapsFolderType(t *testing.T) {
 	}))
 	defer server.Close()
 
-	result, err := CreateDocumentFolderHandleFunc(context.Background(), toolRequest(map[string]interface{}{
+	result, err := CreateDocumentNodeHandleFunc(context.Background(), toolRequest(map[string]interface{}{
 		"enterprise_id": 7,
 		"document_id":   42,
+		"type":          "folder",
 		"name":          "Guides",
 	}), documentTestOptions(server)...)
 	if err != nil {
-		t.Fatalf("CreateDocumentFolderHandleFunc() error = %v", err)
+		t.Fatalf("CreateDocumentNodeHandleFunc() error = %v", err)
 	}
 
 	response := types.DocumentPageResponse{}
@@ -749,37 +718,28 @@ func TestCreateDocumentFolderPostsPayloadAndMapsFolderType(t *testing.T) {
 	}
 }
 
-func TestCreateDocumentChildValidatesParameters(t *testing.T) {
+func TestCreateDocumentNodeValidatesParameters(t *testing.T) {
 	var requestCount atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		requestCount.Add(1)
 	}))
 	defer server.Close()
 
-	page := func(arguments map[string]interface{}) (*mcp.CallToolResult, error) {
-		return CreateDocumentPageHandleFunc(context.Background(), toolRequest(arguments), documentTestOptions(server)...)
-	}
-	folder := func(arguments map[string]interface{}) (*mcp.CallToolResult, error) {
-		return CreateDocumentFolderHandleFunc(context.Background(), toolRequest(arguments), documentTestOptions(server)...)
-	}
-
 	cases := []struct {
 		name      string
-		call      func(map[string]interface{}) (*mcp.CallToolResult, error)
 		arguments map[string]interface{}
 	}{
-		{name: "page missing enterprise", call: page, arguments: map[string]interface{}{"document_id": 42}},
-		{name: "page missing document", call: page, arguments: map[string]interface{}{"enterprise_id": 7}},
-		{name: "page zero parent", call: page, arguments: map[string]interface{}{"enterprise_id": 7, "document_id": 42, "parent_id": 0}},
-		{name: "folder missing enterprise", call: folder, arguments: map[string]interface{}{"document_id": 42, "name": "Guides"}},
-		{name: "folder missing document", call: folder, arguments: map[string]interface{}{"enterprise_id": 7, "name": "Guides"}},
-		{name: "folder missing name", call: folder, arguments: map[string]interface{}{"enterprise_id": 7, "document_id": 42}},
-		{name: "folder blank name", call: folder, arguments: map[string]interface{}{"enterprise_id": 7, "document_id": 42, "name": "  "}},
-		{name: "folder zero parent", call: folder, arguments: map[string]interface{}{"enterprise_id": 7, "document_id": 42, "name": "Guides", "parent_id": 0}},
+		{name: "missing enterprise", arguments: map[string]interface{}{"document_id": 42, "type": "page", "name": "Doc"}},
+		{name: "missing document", arguments: map[string]interface{}{"enterprise_id": 7, "type": "page", "name": "Doc"}},
+		{name: "missing type", arguments: map[string]interface{}{"enterprise_id": 7, "document_id": 42, "name": "Doc"}},
+		{name: "invalid type", arguments: map[string]interface{}{"enterprise_id": 7, "document_id": 42, "type": "link", "name": "Doc"}},
+		{name: "missing name", arguments: map[string]interface{}{"enterprise_id": 7, "document_id": 42, "type": "folder"}},
+		{name: "blank name", arguments: map[string]interface{}{"enterprise_id": 7, "document_id": 42, "type": "folder", "name": "  "}},
+		{name: "zero parent", arguments: map[string]interface{}{"enterprise_id": 7, "document_id": 42, "type": "page", "name": "Doc", "parent_id": 0}},
 	}
 	for _, test := range cases {
 		t.Run(test.name, func(t *testing.T) {
-			result, err := test.call(test.arguments)
+			result, err := CreateDocumentNodeHandleFunc(context.Background(), toolRequest(test.arguments), documentTestOptions(server)...)
 			if !utils.IsParamError(err) {
 				t.Fatalf("error = %v, want parameter error", err)
 			}

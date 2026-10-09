@@ -16,8 +16,7 @@ import (
 
 const (
 	CreateDocument       = "create_enterprise_document"
-	CreateDocumentPage   = "create_enterprise_document_page"
-	CreateDocumentFolder = "create_enterprise_document_folder"
+	CreateDocumentNode   = "create_enterprise_document_node"
 	RenameDocumentFolder = "rename_enterprise_document_folder"
 	ListDocuments        = "list_enterprise_documents"
 	ListDocumentPages    = "list_enterprise_document_pages"

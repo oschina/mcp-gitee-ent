@@ -87,8 +87,7 @@ func disableTools(s *server.MCPServer) {
 func addTools(s *server.MCPServer) {
 	// Documents
 	addTool(s, documents.CreateDocumentTool, documents.CreateDocumentHandleFunc)
-	addTool(s, documents.CreateDocumentPageTool, documents.CreateDocumentPageHandleFunc)
-	addTool(s, documents.CreateDocumentFolderTool, documents.CreateDocumentFolderHandleFunc)
+	addTool(s, documents.CreateDocumentNodeTool, documents.CreateDocumentNodeHandleFunc)
 	addTool(s, documents.RenameDocumentFolderTool, documents.RenameDocumentFolderHandleFunc)
 	addTool(s, documents.ListDocumentsTool, documents.ListDocumentsHandleFunc)
 	addTool(s, documents.ListDocumentPagesTool, documents.ListDocumentPagesHandleFunc)

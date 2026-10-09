@@ -57,6 +57,14 @@ var CreateEntPullTool = mcp.NewTool(CreateEntPull,
 		"tester_id",
 		mcp.Description("Tester IDs (comma separated)"),
 	),
+	mcp.WithNumber(
+		"pr_assign_num",
+		mcp.Description("Minimum number of reviewers"),
+	),
+	mcp.WithNumber(
+		"pr_test_num",
+		mcp.Description("Minimum number of testers"),
+	),
 	mcp.WithString(
 		"draft",
 		mcp.Description("Whether to specify as draft (true/false)"),

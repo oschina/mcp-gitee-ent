@@ -518,3 +518,376 @@ func TestDownloadDocumentSavesAndProtectsExistingFile(t *testing.T) {
 		}
 	}
 }
+
+func TestCreateDocumentPostsPayloadAndMapsResponse(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		if req.Method != http.MethodPost || req.URL.Path != "/7/doc_nodes/create" {
+			t.Fatalf("request = %s %s, want POST /7/doc_nodes/create", req.Method, req.URL.Path)
+		}
+		if got := req.Header.Get("Content-Type"); got != "application/json" {
+			t.Errorf("content type = %q, want application/json", got)
+		}
+		body, err := io.ReadAll(req.Body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		want := map[string]interface{}{
+			"name":            "Handbook",
+			"parent_id":       float64(12),
+			"program_id":      float64(9),
+			"auth_type":       "read_write",
+			"scrum_sprint_id": float64(4),
+		}
+		got := map[string]interface{}{}
+		if err := json.Unmarshal(body, &got); err != nil {
+			t.Fatalf("decode request body %q: %v", body, err)
+		}
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("payload = %#v, want %#v", got, want)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `{"id":91,"parent_id":12,"name":"Handbook","file_path":"企业知识库/Handbook","file_type":"WikiInfo","file_id":42,"editor_type":"markdown","created_at":"created","updated_at":"updated"}`)
+	}))
+	defer server.Close()
+
+	result, err := CreateDocumentHandleFunc(context.Background(), toolRequest(map[string]interface{}{
+		"enterprise_id":   7,
+		"name":            "  Handbook  ",
+		"parent_id":       12,
+		"program_id":      9,
+		"auth_type":       "read_write",
+		"scrum_sprint_id": 4,
+	}), documentTestOptions(server)...)
+	if err != nil {
+		t.Fatalf("CreateDocumentHandleFunc() error = %v", err)
+	}
+
+	document := types.Document{}
+	toolResultJSON(t, result, &document)
+	if document.DocumentID != 42 || document.DocumentNodeID != 91 || document.Name != "Handbook" {
+		t.Fatalf("document = %#v, want IDs (42, 91) and name Handbook", document)
+	}
+}
+
+func TestCreateDocumentSendsOnlyNameAndDefaultAuth(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		if req.Method != http.MethodPost || req.URL.Path != "/7/doc_nodes/create" {
+			t.Fatalf("request = %s %s, want POST /7/doc_nodes/create", req.Method, req.URL.Path)
+		}
+		body, _ := io.ReadAll(req.Body)
+		want := map[string]interface{}{"name": "Runbook", "auth_type": "inherit"}
+		got := map[string]interface{}{}
+		if err := json.Unmarshal(body, &got); err != nil {
+			t.Fatalf("decode request body %q: %v", body, err)
+		}
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("payload = %#v, want %#v", got, want)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `{"id":92,"parent_id":0,"name":"Runbook","file_type":"WikiInfo","file_id":43}`)
+	}))
+	defer server.Close()
+
+	result, err := CreateDocumentHandleFunc(context.Background(), toolRequest(map[string]interface{}{
+		"enterprise_id": 7,
+		"name":          "Runbook",
+	}), documentTestOptions(server)...)
+	if err != nil {
+		t.Fatalf("CreateDocumentHandleFunc() error = %v", err)
+	}
+	document := types.Document{}
+	toolResultJSON(t, result, &document)
+	if document.DocumentID != 43 || document.DocumentNodeID != 92 {
+		t.Fatalf("document IDs = (%d, %d), want (43, 92)", document.DocumentID, document.DocumentNodeID)
+	}
+}
+
+func TestCreateDocumentValidatesParameters(t *testing.T) {
+	var requestCount atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		requestCount.Add(1)
+	}))
+	defer server.Close()
+
+	cases := []struct {
+		name      string
+		arguments map[string]interface{}
+	}{
+		{name: "missing enterprise id", arguments: map[string]interface{}{"name": "Doc"}},
+		{name: "missing name", arguments: map[string]interface{}{"enterprise_id": 7}},
+		{name: "blank name", arguments: map[string]interface{}{"enterprise_id": 7, "name": "   "}},
+		{name: "invalid auth type", arguments: map[string]interface{}{"enterprise_id": 7, "name": "Doc", "auth_type": "shared"}},
+		{name: "sprint without program", arguments: map[string]interface{}{"enterprise_id": 7, "name": "Doc", "scrum_sprint_id": 4}},
+		{name: "zero parent id", arguments: map[string]interface{}{"enterprise_id": 7, "name": "Doc", "parent_id": 0}},
+		{name: "zero program id", arguments: map[string]interface{}{"enterprise_id": 7, "name": "Doc", "program_id": 0}},
+		{name: "zero sprint id", arguments: map[string]interface{}{"enterprise_id": 7, "name": "Doc", "program_id": 9, "scrum_sprint_id": 0}},
+	}
+	for _, test := range cases {
+		t.Run(test.name, func(t *testing.T) {
+			result, err := CreateDocumentHandleFunc(context.Background(), toolRequest(test.arguments), documentTestOptions(server)...)
+			if !utils.IsParamError(err) {
+				t.Fatalf("error = %v, want parameter error", err)
+			}
+			if result == nil || !result.IsError {
+				t.Fatalf("result = %#v, want MCP error result", result)
+			}
+		})
+	}
+	if got := requestCount.Load(); got != 0 {
+		t.Fatalf("request count = %d, want 0", got)
+	}
+}
+
+func TestCreateDocumentPagePostsPayloadAndMapsResponse(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		if req.Method != http.MethodPost || req.URL.Path != "/7/docs/42/create_file" {
+			t.Fatalf("request = %s %s, want POST /7/docs/42/create_file", req.Method, req.URL.Path)
+		}
+		body, _ := io.ReadAll(req.Body)
+		want := map[string]interface{}{"name": "Setup", "parent_id": float64(3)}
+		got := map[string]interface{}{}
+		if err := json.Unmarshal(body, &got); err != nil {
+			t.Fatalf("decode request body %q: %v", body, err)
+		}
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("payload = %#v, want %#v", got, want)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `{"id":11,"name":"Setup","parent_id":3,"file_type":1,"version":"v1","content_type":"markdown","content":"","content_html":"<p></p>"}`)
+	}))
+	defer server.Close()
+
+	result, err := CreateDocumentPageHandleFunc(context.Background(), toolRequest(map[string]interface{}{
+		"enterprise_id": 7,
+		"document_id":   42,
+		"name":          "  Setup  ",
+		"parent_id":     3,
+	}), documentTestOptions(server)...)
+	if err != nil {
+		t.Fatalf("CreateDocumentPageHandleFunc() error = %v", err)
+	}
+
+	response := types.DocumentPageResponse{}
+	toolResultJSON(t, result, &response)
+	if response.DocumentID != 42 {
+		t.Fatalf("document_id = %d, want 42", response.DocumentID)
+	}
+	page := response.Page
+	if page.PageID != 11 || page.Name != "Setup" || page.ParentPageID != 3 || page.Type != "page" || page.Version != "v1" {
+		t.Fatalf("page = %#v", page)
+	}
+	if page.ContentHTML != "" {
+		t.Fatalf("content_html = %q, want stripped", page.ContentHTML)
+	}
+}
+
+func TestCreateDocumentPageSendsEmptyPayloadWithoutNameOrParent(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		if req.Method != http.MethodPost || req.URL.Path != "/7/docs/42/create_file" {
+			t.Fatalf("request = %s %s, want POST /7/docs/42/create_file", req.Method, req.URL.Path)
+		}
+		body, _ := io.ReadAll(req.Body)
+		got := map[string]interface{}{}
+		if err := json.Unmarshal(body, &got); err != nil {
+			t.Fatalf("decode request body %q: %v", body, err)
+		}
+		if len(got) != 0 {
+			t.Errorf("payload = %#v, want empty", got)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `{"id":12,"name":"untitled","parent_id":0,"file_type":1,"content_type":"markdown"}`)
+	}))
+	defer server.Close()
+
+	result, err := CreateDocumentPageHandleFunc(context.Background(), toolRequest(map[string]interface{}{
+		"enterprise_id": 7,
+		"document_id":   42,
+		"name":          "   ",
+	}), documentTestOptions(server)...)
+	if err != nil {
+		t.Fatalf("CreateDocumentPageHandleFunc() error = %v", err)
+	}
+	response := types.DocumentPageResponse{}
+	toolResultJSON(t, result, &response)
+	if response.Page.PageID != 12 {
+		t.Fatalf("page_id = %d, want 12", response.Page.PageID)
+	}
+}
+
+func TestCreateDocumentFolderPostsPayloadAndMapsFolderType(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		if req.Method != http.MethodPost || req.URL.Path != "/7/docs/42/create_folder" {
+			t.Fatalf("request = %s %s, want POST /7/docs/42/create_folder", req.Method, req.URL.Path)
+		}
+		body, _ := io.ReadAll(req.Body)
+		want := map[string]interface{}{"name": "Guides"}
+		got := map[string]interface{}{}
+		if err := json.Unmarshal(body, &got); err != nil {
+			t.Fatalf("decode request body %q: %v", body, err)
+		}
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("payload = %#v, want %#v", got, want)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `{"id":13,"name":"Guides","parent_id":0,"file_type":2,"content_type":"markdown"}`)
+	}))
+	defer server.Close()
+
+	result, err := CreateDocumentFolderHandleFunc(context.Background(), toolRequest(map[string]interface{}{
+		"enterprise_id": 7,
+		"document_id":   42,
+		"name":          "Guides",
+	}), documentTestOptions(server)...)
+	if err != nil {
+		t.Fatalf("CreateDocumentFolderHandleFunc() error = %v", err)
+	}
+
+	response := types.DocumentPageResponse{}
+	toolResultJSON(t, result, &response)
+	if response.Page.PageID != 13 || response.Page.Type != "folder" {
+		t.Fatalf("page = %#v, want folder 13", response.Page)
+	}
+}
+
+func TestCreateDocumentChildValidatesParameters(t *testing.T) {
+	var requestCount atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		requestCount.Add(1)
+	}))
+	defer server.Close()
+
+	page := func(arguments map[string]interface{}) (*mcp.CallToolResult, error) {
+		return CreateDocumentPageHandleFunc(context.Background(), toolRequest(arguments), documentTestOptions(server)...)
+	}
+	folder := func(arguments map[string]interface{}) (*mcp.CallToolResult, error) {
+		return CreateDocumentFolderHandleFunc(context.Background(), toolRequest(arguments), documentTestOptions(server)...)
+	}
+
+	cases := []struct {
+		name      string
+		call      func(map[string]interface{}) (*mcp.CallToolResult, error)
+		arguments map[string]interface{}
+	}{
+		{name: "page missing enterprise", call: page, arguments: map[string]interface{}{"document_id": 42}},
+		{name: "page missing document", call: page, arguments: map[string]interface{}{"enterprise_id": 7}},
+		{name: "page zero parent", call: page, arguments: map[string]interface{}{"enterprise_id": 7, "document_id": 42, "parent_id": 0}},
+		{name: "folder missing enterprise", call: folder, arguments: map[string]interface{}{"document_id": 42, "name": "Guides"}},
+		{name: "folder missing document", call: folder, arguments: map[string]interface{}{"enterprise_id": 7, "name": "Guides"}},
+		{name: "folder missing name", call: folder, arguments: map[string]interface{}{"enterprise_id": 7, "document_id": 42}},
+		{name: "folder blank name", call: folder, arguments: map[string]interface{}{"enterprise_id": 7, "document_id": 42, "name": "  "}},
+		{name: "folder zero parent", call: folder, arguments: map[string]interface{}{"enterprise_id": 7, "document_id": 42, "name": "Guides", "parent_id": 0}},
+	}
+	for _, test := range cases {
+		t.Run(test.name, func(t *testing.T) {
+			result, err := test.call(test.arguments)
+			if !utils.IsParamError(err) {
+				t.Fatalf("error = %v, want parameter error", err)
+			}
+			if result == nil || !result.IsError {
+				t.Fatalf("result = %#v, want MCP error result", result)
+			}
+		})
+	}
+	if got := requestCount.Load(); got != 0 {
+		t.Fatalf("request count = %d, want 0", got)
+	}
+}
+
+func TestRenameDocumentFolderPutsPayloadAndMapsResponse(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		if req.Method != http.MethodPut || req.URL.Path != "/7/docs/42/files/13/rename" {
+			t.Fatalf("request = %s %s, want PUT /7/docs/42/files/13/rename", req.Method, req.URL.Path)
+		}
+		body, _ := io.ReadAll(req.Body)
+		want := map[string]interface{}{"name": "Guides v2"}
+		got := map[string]interface{}{}
+		if err := json.Unmarshal(body, &got); err != nil {
+			t.Fatalf("decode request body %q: %v", body, err)
+		}
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("payload = %#v, want %#v", got, want)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `{"id":13,"name":"Guides v2","parent_id":0,"file_type":2,"content_type":"markdown"}`)
+	}))
+	defer server.Close()
+
+	result, err := RenameDocumentFolderHandleFunc(context.Background(), toolRequest(map[string]interface{}{
+		"enterprise_id": 7,
+		"document_id":   42,
+		"page_id":       13,
+		"name":          "  Guides v2  ",
+	}), documentTestOptions(server)...)
+	if err != nil {
+		t.Fatalf("RenameDocumentFolderHandleFunc() error = %v", err)
+	}
+
+	response := types.DocumentPageResponse{}
+	toolResultJSON(t, result, &response)
+	if response.DocumentID != 42 || response.Page.PageID != 13 || response.Page.Type != "folder" || response.Page.Name != "Guides v2" {
+		t.Fatalf("response = %#v, want folder 13 renamed", response)
+	}
+}
+
+func TestRenameDocumentFolderValidatesParameters(t *testing.T) {
+	var requestCount atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		requestCount.Add(1)
+	}))
+	defer server.Close()
+
+	cases := []struct {
+		name      string
+		arguments map[string]interface{}
+	}{
+		{name: "missing enterprise", arguments: map[string]interface{}{"document_id": 42, "page_id": 13, "name": "Guides"}},
+		{name: "missing document", arguments: map[string]interface{}{"enterprise_id": 7, "page_id": 13, "name": "Guides"}},
+		{name: "missing page", arguments: map[string]interface{}{"enterprise_id": 7, "document_id": 42, "name": "Guides"}},
+		{name: "missing name", arguments: map[string]interface{}{"enterprise_id": 7, "document_id": 42, "page_id": 13}},
+		{name: "blank name", arguments: map[string]interface{}{"enterprise_id": 7, "document_id": 42, "page_id": 13, "name": "   "}},
+		{name: "name with slash", arguments: map[string]interface{}{"enterprise_id": 7, "document_id": 42, "page_id": 13, "name": "a/b"}},
+		{name: "name too long", arguments: map[string]interface{}{"enterprise_id": 7, "document_id": 42, "page_id": 13, "name": strings.Repeat("名", 65)}},
+	}
+	for _, test := range cases {
+		t.Run(test.name, func(t *testing.T) {
+			result, err := RenameDocumentFolderHandleFunc(context.Background(), toolRequest(test.arguments), documentTestOptions(server)...)
+			if !utils.IsParamError(err) {
+				t.Fatalf("error = %v, want parameter error", err)
+			}
+			if result == nil || !result.IsError {
+				t.Fatalf("result = %#v, want MCP error result", result)
+			}
+		})
+	}
+
+	if got := requestCount.Load(); got != 0 {
+		t.Fatalf("request count = %d, want 0", got)
+	}
+}
+
+func TestRenameDocumentFolderAcceptsMaxLengthName(t *testing.T) {
+	name := strings.Repeat("名", 64)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		if req.Method != http.MethodPut || req.URL.Path != "/7/docs/42/files/13/rename" {
+			t.Fatalf("request = %s %s, want PUT /7/docs/42/files/13/rename", req.Method, req.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `{"id":13,"name":"`+name+`","parent_id":0,"file_type":2}`)
+	}))
+	defer server.Close()
+
+	result, err := RenameDocumentFolderHandleFunc(context.Background(), toolRequest(map[string]interface{}{
+		"enterprise_id": 7,
+		"document_id":   42,
+		"page_id":       13,
+		"name":          name,
+	}), documentTestOptions(server)...)
+	if err != nil {
+		t.Fatalf("RenameDocumentFolderHandleFunc() error = %v", err)
+	}
+	response := types.DocumentPageResponse{}
+	toolResultJSON(t, result, &response)
+	if response.Page.Name != name {
+		t.Fatalf("name = %q, want 64-rune name", response.Page.Name)
+	}
+}

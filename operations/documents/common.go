@@ -15,12 +15,16 @@ import (
 )
 
 const (
-	ListDocuments      = "list_enterprise_documents"
-	ListDocumentPages  = "list_enterprise_document_pages"
-	GetDocumentPage    = "get_enterprise_document_page"
-	UploadDocument     = "upload_enterprise_document_files"
-	DownloadDocument   = "download_enterprise_document"
-	UpdateDocumentPage = "update_enterprise_document_page"
+	CreateDocument       = "create_enterprise_document"
+	CreateDocumentPage   = "create_enterprise_document_page"
+	CreateDocumentFolder = "create_enterprise_document_folder"
+	RenameDocumentFolder = "rename_enterprise_document_folder"
+	ListDocuments        = "list_enterprise_documents"
+	ListDocumentPages    = "list_enterprise_document_pages"
+	GetDocumentPage      = "get_enterprise_document_page"
+	UploadDocument       = "upload_enterprise_document_files"
+	DownloadDocument     = "download_enterprise_document"
+	UpdateDocumentPage   = "update_enterprise_document_page"
 )
 
 func getArguments(request mcp.CallToolRequest) (map[string]interface{}, *mcp.CallToolResult, error) {
@@ -216,6 +220,18 @@ func fetchDocumentPage(ctx context.Context, enterpriseID, documentID, pageID int
 		return types.DocumentPageDetail{}, err
 	}
 	return types.NewDocumentPageDetail(raw), nil
+}
+
+// documentChildResult maps the WikiSortDetail returned by the page and folder write endpoints.
+func documentChildResult(ctx context.Context, method, path string, documentID int, payload map[string]interface{}, opts ...utils.Option) (*mcp.CallToolResult, error) {
+	raw := types.DocumentPageDetailNode{}
+	if err := getJSON(ctx, method, path, &raw, append(opts, utils.WithPayload(payload))...); err != nil {
+		return utils.MCPErrorResult(err)
+	}
+
+	detail := types.NewDocumentPageDetail(raw)
+	detail.ContentHTML = ""
+	return utils.MCPJSONResult(types.DocumentPageResponse{DocumentID: documentID, Page: detail})
 }
 
 func pageIDList(values []int) string {

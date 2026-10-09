@@ -190,6 +190,10 @@ mcp-gitee-ent --version
 | **list_scrum_versions**            | 项目           | 列出 Scrum 版本 |
 | **list_issue_types**               | 工作项类型        | 列出工作项类型     |
 | **list_issue_type_states**         | 工作项状态        | 列出工作项状态     |
+| **create_enterprise_document** | 文档 | 新建企业知识库文档 |
+| **create_enterprise_document_page** | 文档 | 在已有文档内新建页面 |
+| **create_enterprise_document_folder** | 文档 | 在已有文档内新建文件夹 |
+| **rename_enterprise_document_folder** | 文档 | 重命名已有文档内的文件夹 |
 | **list_enterprise_documents** | 文档 | 列出或搜索可访问的企业知识库文档 |
 | **list_enterprise_document_pages** | 文档 | 列出文档页面并将页面树展开为路径 |
 | **get_enterprise_document_page** | 文档 | 获取文档页面源码和元数据 |
@@ -200,9 +204,9 @@ mcp-gitee-ent --version
 ### 企业文档使用流程
 
 1. 调用 `list_enterprises` 获取目标企业的 `enterprise_id`。
-2. 调用 `list_enterprise_documents`，将返回的 `document_id` 用于其他文档工具。需要查询项目文档时传入 `program_id`，需要缩小范围时可设置 `created_by_me=true`。
+2. 如需新建文档，调用 `create_enterprise_document`，将返回的 `document_id` 用于其他文档工具；否则调用 `list_enterprise_documents` 并使用其 `document_id`。需要查询项目文档时传入 `program_id`，需要缩小范围时可设置 `created_by_me=true`。
    - 需要按关键字查找文档时传入 `search`。服务端会匹配文档名和页面名（开启全文检索时还会匹配正文），返回页面级命中结果，每条命中携带其 `document_id` 和 `page_id`；结果按排序字段降序返回且分页大小由服务端固定，因此 `search` 不能与 `program_id`、`created_by_me`、`direction`、`per_page` 组合使用。
-3. 调用 `list_enterprise_document_pages`，获取页面的 `page_id`、展开后的路径、内容类型和当前版本。
+3. 调用 `list_enterprise_document_pages`，获取页面的 `page_id`、展开后的路径、内容类型和当前版本。如需新增结构，页面调用 `create_enterprise_document_page`、文件夹调用 `create_enterprise_document_folder`，可通过可选参数 `parent_id` 挂到已有文件夹下。文件夹重命名使用 `rename_enterprise_document_folder`；页面重命名通过 `update_enterprise_document_page` 的 `page_name` 完成。
 4. 编辑前立即调用 `get_enterprise_document_page`。保持返回内容的原始表示，并将其版本作为 `expected_version` 传给 `update_enterprise_document_page`。
 
 `document_id` 对应底层的 `WikiInfo.id`。`document_node_id` 表示文档在企业知识库目录树中的节点，仅作为元数据返回。`page_id` 表示文档内部的页面或文件夹。

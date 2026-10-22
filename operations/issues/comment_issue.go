@@ -23,7 +23,7 @@ var CommentIssueTool = mcp.NewTool(CommentIssue,
 	),
 	mcp.WithString(
 		"issue_id",
-		mcp.Description("Issue Ident"),
+		mcp.Description("Issue ID or Ident"),
 		mcp.Required(),
 	),
 	mcp.WithString(
@@ -50,13 +50,19 @@ func CommentIssueHandleFunc(ctx context.Context, request mcp.CallToolRequest, op
 		return mcp.NewToolResultError(err.Error()), err
 	}
 	issueIDArg := arguments["issue_id"]
+	issueID, err := utils.SafelyConvertToString(issueIDArg)
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), err
+	}
 	body := arguments["body"]
 
-	apiUrl := fmt.Sprintf("/%d/issues/%s/notes", enterpriseID, issueIDArg)
+	apiUrl := fmt.Sprintf("/%d/issues/%s/notes", enterpriseID, issueID)
 
 	payload := map[string]interface{}{
 		"body": body,
-		"qt":   "ident",
+	}
+	if !utils.IsAllDigits(issueID) {
+		payload["qt"] = "ident"
 	}
 
 	opts = append(opts, utils.WithPayload(payload))

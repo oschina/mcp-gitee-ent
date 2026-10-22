@@ -23,7 +23,7 @@ var UpdateIssueTool = mcp.NewTool(UpdateIssue,
 	),
 	mcp.WithString(
 		"issue_id",
-		mcp.Description("Issue Ident"),
+		mcp.Description("Issue ID or Ident"),
 		mcp.Required(),
 	),
 	mcp.WithString(
@@ -120,9 +120,15 @@ func UpdateIssueHandleFunc(ctx context.Context, request mcp.CallToolRequest, opt
 		return mcp.NewToolResultError(err.Error()), err
 	}
 	issueIDArg := arguments["issue_id"]
-	arguments["qt"] = "ident"
+	issueID, err := utils.SafelyConvertToString(issueIDArg)
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), err
+	}
+	if !utils.IsAllDigits(issueID) {
+		arguments["qt"] = "ident"
+	}
 
-	apiUrl := fmt.Sprintf("/%d/issues/%s", enterpriseID, issueIDArg)
+	apiUrl := fmt.Sprintf("/%d/issues/%s", enterpriseID, issueID)
 	opts = append(opts, utils.WithPayload(arguments))
 	giteeClient := utils.NewGiteeClient("PUT", apiUrl, opts...)
 

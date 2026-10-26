@@ -27,7 +27,7 @@ var UpdatePullTool = mcp.NewTool(UpdateEntPull,
 		mcp.Required(),
 	),
 	mcp.WithNumber(
-		"pull_request_id",
+		"pull_request_iid",
 		mcp.Description("Pull request IID"),
 		mcp.Required(),
 	),
@@ -62,7 +62,7 @@ func UpdateEntPullHandleFunc(ctx context.Context, request mcp.CallToolRequest, o
 	}
 
 	// Validate required parameters
-	if checkResult, err := utils.CheckRequired(arguments, "project_id", "pull_request_id"); err != nil {
+	if checkResult, err := utils.CheckRequired(arguments, "project_id", "pull_request_iid"); err != nil {
 		return checkResult, err
 	}
 	enterpriseIDArg := arguments["enterprise_id"]
@@ -75,8 +75,8 @@ func UpdateEntPullHandleFunc(ctx context.Context, request mcp.CallToolRequest, o
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), err
 	}
-	pullRequestIDArg := arguments["pull_request_id"]
-	pullRequestID, err := utils.SafelyConvertToInt(pullRequestIDArg)
+	pullRequestIIDArg := arguments["pull_request_iid"]
+	pullRequestIID, err := utils.SafelyConvertToInt(pullRequestIIDArg)
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), err
 	}
@@ -86,7 +86,7 @@ func UpdateEntPullHandleFunc(ctx context.Context, request mcp.CallToolRequest, o
 	}
 	arguments["pr_qt"] = "iid"
 
-	apiUrl := fmt.Sprintf("/%d/projects/%s/pull_requests/%d", enterpriseID, url.QueryEscape(projectID), pullRequestID)
+	apiUrl := fmt.Sprintf("/%d/projects/%s/pull_requests/%d", enterpriseID, url.QueryEscape(projectID), pullRequestIID)
 	opts = append(opts, utils.WithPayload(arguments))
 	giteeClient := utils.NewGiteeClient("PUT", apiUrl, opts...)
 

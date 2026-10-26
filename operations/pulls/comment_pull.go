@@ -27,7 +27,7 @@ var CommentPullTool = mcp.NewTool(CommentEntPull,
 		mcp.Required(),
 	),
 	mcp.WithNumber(
-		"pull_request_id",
+		"pull_request_iid",
 		mcp.Description("Pull request IID"),
 		mcp.Required(),
 	),
@@ -50,7 +50,7 @@ func CommentPullHandleFunc(ctx context.Context, request mcp.CallToolRequest, opt
 	}
 
 	// Validate required parameters
-	if checkResult, err := utils.CheckRequired(arguments, "project_id", "pull_request_id", "body"); err != nil {
+	if checkResult, err := utils.CheckRequired(arguments, "project_id", "pull_request_iid", "body"); err != nil {
 		return checkResult, err
 	}
 
@@ -64,13 +64,13 @@ func CommentPullHandleFunc(ctx context.Context, request mcp.CallToolRequest, opt
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), err
 	}
-	pullRequestIDArg := arguments["pull_request_id"]
-	pullRequestID, err := utils.SafelyConvertToInt(pullRequestIDArg)
+	pullRequestIIDArg := arguments["pull_request_iid"]
+	pullRequestIID, err := utils.SafelyConvertToInt(pullRequestIIDArg)
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), err
 	}
 
-	apiUrl := fmt.Sprintf("/%d/projects/%s/pull_requests/%d/notes", enterpriseID, url.QueryEscape(projectID), pullRequestID)
+	apiUrl := fmt.Sprintf("/%d/projects/%s/pull_requests/%d/notes", enterpriseID, url.QueryEscape(projectID), pullRequestIID)
 	arguments["pr_qt"] = "iid"
 	if !utils.IsAllDigits(projectID) {
 		arguments["qt"] = "path"

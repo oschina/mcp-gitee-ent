@@ -27,8 +27,8 @@ var ListPullCommentsTool = mcp.NewTool(ListEntPullComments,
 		mcp.Required(),
 	),
 	mcp.WithNumber(
-		"pull_request_id",
-		mcp.Description("Pull request ID"),
+		"pull_request_iid",
+		mcp.Description("Pull request IID"),
 		mcp.Required(),
 	),
 	mcp.WithNumber(
@@ -51,7 +51,7 @@ func ListPullCommentsHandleFunc(ctx context.Context, request mcp.CallToolRequest
 	}
 
 	// Validate required parameters
-	if checkResult, err := utils.CheckRequired(arguments, "project_id", "pull_request_id"); err != nil {
+	if checkResult, err := utils.CheckRequired(arguments, "project_id", "pull_request_iid"); err != nil {
 		return checkResult, err
 	}
 
@@ -65,8 +65,8 @@ func ListPullCommentsHandleFunc(ctx context.Context, request mcp.CallToolRequest
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), err
 	}
-	pullRequestIDArg := arguments["pull_request_id"]
-	pullRequestID, err := utils.SafelyConvertToInt(pullRequestIDArg)
+	pullRequestIIDArg := arguments["pull_request_iid"]
+	pullRequestIID, err := utils.SafelyConvertToInt(pullRequestIIDArg)
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), err
 	}
@@ -76,7 +76,7 @@ func ListPullCommentsHandleFunc(ctx context.Context, request mcp.CallToolRequest
 	}
 	arguments["pr_qt"] = "iid"
 
-	apiUrl := fmt.Sprintf("/%d/projects/%s/pull_requests/%d/notes", enterpriseID, url.QueryEscape(projectID), pullRequestID)
+	apiUrl := fmt.Sprintf("/%d/projects/%s/pull_requests/%d/notes", enterpriseID, url.QueryEscape(projectID), pullRequestIID)
 	opts = append(opts, utils.WithQuery(arguments))
 	giteeClient := utils.NewGiteeClient("GET", apiUrl, opts...)
 

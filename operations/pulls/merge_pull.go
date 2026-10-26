@@ -26,8 +26,8 @@ var MergePullTool = mcp.NewTool(MergeEntPull,
 		mcp.Required(),
 	),
 	mcp.WithNumber(
-		"pull_request_id",
-		mcp.Description("Pull request ID"),
+		"pull_request_iid",
+		mcp.Description("Pull request IID"),
 		mcp.Required(),
 	),
 	mcp.WithString(
@@ -54,7 +54,7 @@ func MergePullHandleFunc(ctx context.Context, request mcp.CallToolRequest, opts 
 	}
 
 	// Validate required parameters
-	if checkResult, err := utils.CheckRequired(arguments, "project_id", "pull_request_id"); err != nil {
+	if checkResult, err := utils.CheckRequired(arguments, "project_id", "pull_request_iid"); err != nil {
 		return checkResult, err
 	}
 
@@ -68,13 +68,13 @@ func MergePullHandleFunc(ctx context.Context, request mcp.CallToolRequest, opts 
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), err
 	}
-	pullRequestIDArg := arguments["pull_request_id"]
-	pullRequestId, err := utils.SafelyConvertToInt(pullRequestIDArg)
+	pullRequestIIDArg := arguments["pull_request_iid"]
+	pullRequestIID, err := utils.SafelyConvertToInt(pullRequestIIDArg)
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), err
 	}
 
-	apiUrl := fmt.Sprintf("/%d/projects/%s/pull_requests/%d/merge", enterpriseID, url.QueryEscape(projectID), pullRequestId)
+	apiUrl := fmt.Sprintf("/%d/projects/%s/pull_requests/%d/merge", enterpriseID, url.QueryEscape(projectID), pullRequestIID)
 	arguments["pr_qt"] = "iid"
 	if !utils.IsAllDigits(projectID) {
 		arguments["qt"] = "path"

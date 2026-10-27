@@ -7,11 +7,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
 	"runtime"
 	"strconv"
+	"time"
 
 	"gitee.com/oschina/mcp-gitee-ent/operations/types"
 	"github.com/mark3labs/mcp-go/mcp"
@@ -24,6 +26,7 @@ const (
 var (
 	giteeAccessToken string
 	apiBase          string
+	giteeHTTPClient  = &http.Client{Timeout: HTTPTimeout()}
 )
 
 func SetGiteeAccessToken(token string) {
@@ -99,7 +102,7 @@ func NewGiteeClient(method, urlPath string, opts ...Option) *GiteeClient {
 	// Initialize client with defaults, including apiBase from GetApiBase()
 	client := &GiteeClient{
 		Method:     method,
-		httpClient: http.DefaultClient,
+		httpClient: giteeHTTPClient,
 		authorizer: &BearerTokenAuthorizer{},
 		apiBase:    GetApiBase(),
 	}
@@ -139,6 +142,17 @@ func WithQuery(query map[string]interface{}) Option {
 		parsedQuery := make(map[string]string)
 		if query != nil {
 			for k, v := range query {
+				if k == "per_page" {
+					if limit, err := SafelyConvertToInt(v); err == nil {
+						if limit < 1 {
+							limit = 1
+						}
+						if limit > MaxPerPage() {
+							limit = MaxPerPage()
+						}
+						v = limit
+					}
+				}
 				parsedValue := ""
 				switch val := v.(type) {
 				case string:
@@ -214,61 +228,84 @@ func (g *GiteeClient) Do() (*GiteeClient, error) {
 
 func (g *GiteeClient) DoContext(ctx context.Context) (*GiteeClient, error) {
 	g.Response = nil
-	var requestBody io.Reader
-
-	if g.Body != nil {
-		requestBody = g.Body
-	} else if g.Payload != nil {
-		payload, err := json.Marshal(g.Payload)
+	var payload []byte
+	var err error
+	if g.Body == nil && g.Payload != nil {
+		payload, err = json.Marshal(g.Payload)
 		if err != nil {
 			return nil, NewInternalError(fmt.Errorf("failed to marshal payload: %w", err))
 		}
-		requestBody = bytes.NewReader(payload)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, g.Method, g.Url, requestBody)
-	if err != nil {
-		return nil, NewInternalError(fmt.Errorf("failed to create request: %w", err))
+	attempts := 1
+	if g.Method == http.MethodGet {
+		attempts = 2
 	}
+	start := time.Now()
 
-	contentType := g.ContentType
-	if contentType == "" {
-		contentType = "application/json"
-	}
-	req.Header.Set("Content-Type", contentType)
-	req.Header.Set("User-Agent", "mcp-gitee-ent "+Version+" Go/"+runtime.GOOS+"/"+runtime.GOARCH+"/"+runtime.Version())
+	for attempt := 1; attempt <= attempts; attempt++ {
+		var requestBody io.Reader
+		if g.Body != nil {
+			requestBody = g.Body
+		} else if payload != nil {
+			requestBody = bytes.NewReader(payload)
+		}
 
-	for key, value := range g.Headers {
-		req.Header.Set(key, value)
-	}
+		req, err := http.NewRequestWithContext(ctx, g.Method, g.Url, requestBody)
+		if err != nil {
+			return nil, NewInternalError(fmt.Errorf("failed to create request: %w", err))
+		}
 
-	// Apply authorization
-	if g.authorizer != nil {
+		contentType := g.ContentType
+		if contentType == "" {
+			contentType = "application/json"
+		}
+		req.Header.Set("Content-Type", contentType)
+		req.Header.Set("User-Agent", "mcp-gitee-ent "+Version+" Go/"+runtime.GOOS+"/"+runtime.GOARCH+"/"+runtime.Version())
+		for key, value := range g.Headers {
+			req.Header.Set(key, value)
+		}
+		if g.authorizer == nil {
+			return nil, NewAuthError()
+		}
 		if err := g.authorizer.Authorize(req); err != nil {
 			if IsAuthError(err) {
 				return nil, err
 			}
 			return nil, NewInternalError(fmt.Errorf("authorization failed: %w", err))
 		}
-	} else {
-		return nil, NewAuthError()
+
+		resp, err := g.httpClient.Do(req)
+		duration := time.Since(start)
+		if err != nil {
+			if attempt < attempts && ctx.Err() == nil {
+				log.Printf("gitee request retry method=%s path=%s attempt=%d error=%v", g.Method, g.parsedUrl.Path, attempt, err)
+				time.Sleep(200 * time.Millisecond)
+				continue
+			}
+			log.Printf("gitee request failed method=%s path=%s duration=%s error=%v", g.Method, g.parsedUrl.Path, duration, err)
+			return g, NewNetworkError(err)
+		}
+		g.Response = resp
+
+		if !g.IsSuccess() {
+			body, _ := io.ReadAll(resp.Body)
+			_ = resp.Body.Close()
+			if attempt < attempts && (resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode >= 500) {
+				log.Printf("gitee request retry method=%s path=%s status=%d attempt=%d", g.Method, g.parsedUrl.Path, resp.StatusCode, attempt)
+				time.Sleep(200 * time.Millisecond)
+				continue
+			}
+			log.Printf("gitee request error method=%s path=%s status=%d duration=%s", g.Method, g.parsedUrl.Path, resp.StatusCode, duration)
+			return g, NewAPIError(resp.StatusCode, body)
+		}
+
+		if duration > SlowRequestThreshold() {
+			log.Printf("gitee request slow method=%s path=%s status=%d duration=%s", g.Method, g.parsedUrl.Path, resp.StatusCode, duration)
+		}
+		return g, nil
 	}
-
-	resp, err := g.httpClient.Do(req)
-	if err != nil {
-		return g, NewNetworkError(err)
-	}
-
-	g.Response = resp
-
-	// 检查响应状态码
-	if !g.IsSuccess() {
-		body, _ := io.ReadAll(resp.Body)
-		_ = resp.Body.Close()
-		return g, NewAPIError(resp.StatusCode, body)
-	}
-
-	return g, nil
+	return g, NewInternalError(fmt.Errorf("request failed after retries"))
 }
 
 func (g *GiteeClient) IsSuccess() bool {
@@ -321,6 +358,9 @@ func (g *GiteeClient) HandleMCPResultContext(ctx context.Context, object any) (*
 	}
 
 	if _, ok := object.(*types.PullDiff); ok {
+		if len(body) > MaxResponseBytes() {
+			return mcp.NewToolResultError(fmt.Sprintf("Response too large (%d bytes, limit %d). Narrow the diff or reduce per_page.", len(body), MaxResponseBytes())), nil
+		}
 		return mcp.NewToolResultText(string(body)), nil
 	}
 
@@ -340,7 +380,20 @@ func MCPErrorResult(err error) (*mcp.CallToolResult, error) {
 		return mcp.NewToolResultError("Network error: Unable to connect to Gitee Enterprise API"), err
 	case IsAPIError(err):
 		giteeErr := err.(*GiteeError)
-		return mcp.NewToolResultError(fmt.Sprintf("API error (%d): %s", giteeErr.Code, giteeErr.Details)), err
+		hint := ""
+		switch {
+		case giteeErr.Code == http.StatusUnauthorized:
+			hint = " Check the access token."
+		case giteeErr.Code == http.StatusForbidden:
+			hint = " Check token scopes, enterprise permissions, and whether the enterprise plan includes this feature."
+		case giteeErr.Code == http.StatusNotFound:
+			hint = " Check the resource IDs and project scope."
+		case giteeErr.Code == http.StatusTooManyRequests:
+			hint = " Rate limited; retry later or reduce request frequency."
+		case giteeErr.Code >= 500:
+			hint = " Upstream error; retry later."
+		}
+		return mcp.NewToolResultError(fmt.Sprintf("API error (%d): %s%s", giteeErr.Code, giteeErr.Details, hint)), err
 	default:
 		return mcp.NewToolResultError(err.Error()), err
 	}
@@ -353,5 +406,8 @@ func MCPJSONResult(object any) (*mcp.CallToolResult, error) {
 			NewInternalError(err)
 	}
 
+	if len(result) > MaxResponseBytes() {
+		return mcp.NewToolResultError(fmt.Sprintf("Response too large (%d bytes, limit %d). Narrow filters or reduce per_page.", len(result), MaxResponseBytes())), nil
+	}
 	return mcp.NewToolResultText(string(result)), nil
 }

@@ -1,0 +1,777 @@
+[
+  {
+    "query": "list_milestones",
+    "expected": [
+      "list_milestones"
+    ],
+    "kind": "exact"
+  },
+  {
+    "query": "get_milestone",
+    "expected": [
+      "get_milestone"
+    ],
+    "kind": "exact"
+  },
+  {
+    "query": "create_milestone",
+    "expected": [
+      "create_milestone"
+    ],
+    "kind": "exact"
+  },
+  {
+    "query": "update_milestone",
+    "expected": [
+      "update_milestone"
+    ],
+    "kind": "exact"
+  },
+  {
+    "query": "create_label",
+    "expected": [
+      "create_label"
+    ],
+    "kind": "exact"
+  },
+  {
+    "query": "update_label",
+    "expected": [
+      "update_label"
+    ],
+    "kind": "exact"
+  },
+  {
+    "query": "search_members",
+    "expected": [
+      "search_members"
+    ],
+    "kind": "exact"
+  },
+  {
+    "query": "get_member",
+    "expected": [
+      "get_member"
+    ],
+    "kind": "exact"
+  },
+  {
+    "query": "get_member_by_email",
+    "expected": [
+      "get_member_by_email"
+    ],
+    "kind": "exact"
+  },
+  {
+    "query": "list_workloads",
+    "expected": [
+      "list_workloads"
+    ],
+    "kind": "exact"
+  },
+  {
+    "query": "get_issue_overview",
+    "expected": [
+      "get_issue_overview"
+    ],
+    "kind": "exact"
+  },
+  {
+    "query": "get_issue_development_links",
+    "expected": [
+      "get_issue_development_links"
+    ],
+    "kind": "exact"
+  },
+  {
+    "query": "update_issue_note",
+    "expected": [
+      "update_issue_note"
+    ],
+    "kind": "exact"
+  },
+  {
+    "query": "delete_issue_note",
+    "expected": [
+      "delete_issue_note"
+    ],
+    "kind": "exact"
+  },
+  {
+    "query": "link_issue_pull_request",
+    "expected": [
+      "link_issue_pull_request"
+    ],
+    "kind": "exact"
+  },
+  {
+    "query": "里程碑列表",
+    "expected": [
+      "list_milestones"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "里程碑详情",
+    "expected": [
+      "get_milestone"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "新建里程碑",
+    "expected": [
+      "create_milestone"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "修改里程碑截止日期",
+    "expected": [
+      "update_milestone"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "创建标签",
+    "expected": [
+      "create_label"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "修改标签颜色",
+    "expected": [
+      "update_label"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "搜索成员",
+    "expected": [
+      "search_members"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "成员详情",
+    "expected": [
+      "get_member"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "按邮箱找人",
+    "expected": [
+      "get_member_by_email"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "成员参与的项目",
+    "expected": [
+      "list_member_memberships"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "查询工时",
+    "expected": [
+      "list_workloads"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "工作项概览",
+    "expected": [
+      "get_issue_overview"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "子工作项",
+    "expected": [
+      "list_issue_children"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "父需求",
+    "expected": [
+      "list_issue_ancestors"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "工作项关联的PR",
+    "expected": [
+      "get_issue_development_links"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "工作项操作日志",
+    "expected": [
+      "list_issue_operation_logs"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "下一状态",
+    "expected": [
+      "list_issue_next_states"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "团队详情",
+    "expected": [
+      "get_group"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "修改评论",
+    "expected": [
+      "update_issue_note"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "删除评论",
+    "expected": [
+      "delete_issue_note"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "list milestones",
+    "expected": [
+      "list_milestones"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "get milestone detail",
+    "expected": [
+      "get_milestone"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "create milestone",
+    "expected": [
+      "create_milestone"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "update milestone",
+    "expected": [
+      "update_milestone"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "create label",
+    "expected": [
+      "create_label"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "update label",
+    "expected": [
+      "update_label"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "search members",
+    "expected": [
+      "search_members"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "member by email",
+    "expected": [
+      "get_member_by_email"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "list workloads",
+    "expected": [
+      "list_workloads"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "issue development links",
+    "expected": [
+      "get_issue_development_links"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "issue operation history",
+    "expected": [
+      "list_issue_operation_logs"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "next states",
+    "expected": [
+      "list_issue_next_states"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "link pull request",
+    "expected": [
+      "link_issue_pull_request"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "unlink pull request",
+    "expected": [
+      "unlink_issue_pull_request"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "group detail",
+    "expected": [
+      "get_group"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "这个需求关联了哪些代码",
+    "expected": [
+      "get_issue_development_links",
+      "list_issue_children"
+    ],
+    "kind": "ambiguous"
+  },
+  {
+    "query": "这个需求下面还有哪些任务",
+    "expected": [
+      "list_issue_children"
+    ],
+    "kind": "ambiguous"
+  },
+  {
+    "query": "谁负责这个里程碑",
+    "expected": [
+      "get_milestone",
+      "list_milestones"
+    ],
+    "kind": "ambiguous"
+  },
+  {
+    "query": "这个人参与了哪些团队",
+    "expected": [
+      "list_member_memberships"
+    ],
+    "kind": "ambiguous"
+  },
+  {
+    "query": "这周工时",
+    "expected": [
+      "list_workloads"
+    ],
+    "kind": "ambiguous"
+  },
+  {
+    "query": "天气预报",
+    "expected": [],
+    "kind": "negative"
+  },
+  {
+    "query": "lunch menu",
+    "expected": [],
+    "kind": "negative"
+  },
+  {
+    "query": "payroll tax",
+    "expected": [],
+    "kind": "negative"
+  },
+  {
+    "query": "办公用品采购",
+    "expected": [],
+    "kind": "negative"
+  },
+  {
+    "query": "燃尽图",
+    "expected": [],
+    "kind": "negative"
+  },
+  {
+    "query": "蓝图",
+    "expected": [],
+    "kind": "negative"
+  },
+  {
+    "query": "测试用例",
+    "expected": [
+      "list_test_cases"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "测试用例详情",
+    "expected": [
+      "get_test_case"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "功能模块",
+    "expected": [
+      "list_test_case_modules"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "创建测试用例",
+    "expected": [
+      "create_test_case"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "测试计划",
+    "expected": [
+      "list_test_plans"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "创建测试计划",
+    "expected": [
+      "create_test_plan"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "计划里的用例",
+    "expected": [
+      "list_test_plan_cases"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "添加用例到测试计划",
+    "expected": [
+      "add_test_cases_to_plan"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "记录用例执行结果",
+    "expected": [
+      "create_test_plan_case_execution"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "用例关联缺陷",
+    "expected": [
+      "link_test_plan_case_issues"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "测试报告",
+    "expected": [
+      "create_test_report"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "创建测试报告",
+    "expected": [
+      "create_test_report"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "test report",
+    "expected": [
+      "create_test_report"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "测试报告列表",
+    "expected": [
+      "list_test_reports"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "测试报告详情",
+    "expected": [
+      "get_test_report"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "修改测试报告",
+    "expected": [
+      "update_test_report"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "删除测试报告",
+    "expected": [
+      "delete_test_report"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "删除测试用例",
+    "expected": [
+      "delete_test_case"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "删除测试计划",
+    "expected": [
+      "delete_test_plan"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "删除测试模块",
+    "expected": [
+      "delete_test_case_module"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "PR检查",
+    "expected": [
+      "list_pr_check_runs"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "PR门禁",
+    "expected": [
+      "list_project_check_runs",
+      "list_pr_check_runs"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "提交检查",
+    "expected": [
+      "list_commit_check_runs"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "项目详情",
+    "expected": [
+      "get_program"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "项目概览",
+    "expected": [
+      "get_program_overview"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "项目组件",
+    "expected": [
+      "get_program_components"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "团队成员",
+    "expected": [
+      "list_group_members"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "团队仓库",
+    "expected": [
+      "list_group_projects"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "团队项目",
+    "expected": [
+      "list_group_programs"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "文档搜索",
+    "expected": [
+      "search_documents"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "最近文档",
+    "expected": [
+      "list_recent_documents"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "共享文档",
+    "expected": [
+      "list_shared_documents"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "工作项附件",
+    "expected": [
+      "list_issue_attachments"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "关联任务",
+    "expected": [
+      "list_issue_related_issues"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "工作项权限",
+    "expected": [
+      "list_issue_authorizations"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "迭代详情",
+    "expected": [
+      "get_scrum_sprint"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "版本详情",
+    "expected": [
+      "get_scrum_version"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "阶段列表",
+    "expected": [
+      "list_scrum_stages"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "Webhook列表",
+    "expected": [
+      "list_webhooks"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "Webhook日志",
+    "expected": [
+      "list_webhook_logs"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "基线列表",
+    "expected": [
+      "list_baselines"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "基线详情",
+    "expected": [
+      "get_baseline"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "公共视图",
+    "expected": [
+      "list_common_views"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "看板列表",
+    "expected": [
+      "list_kanbans"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "看板栏",
+    "expected": [
+      "list_kanban_columns"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "星标工作项",
+    "expected": [
+      "set_issue_starred"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "工作项表态",
+    "expected": [
+      "add_issue_reaction"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "关联需求",
+    "expected": [
+      "add_issue_relation"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "关联文档",
+    "expected": [
+      "link_issue_document"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "关联测试用例",
+    "expected": [
+      "link_issue_test_cases"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "恢复工作项",
+    "expected": [
+      "restore_issues"
+    ],
+    "kind": "business"
+  }
+]

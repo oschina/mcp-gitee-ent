@@ -8,20 +8,9 @@ import (
 	"os"
 	"strings"
 
-	"gitee.com/oschina/mcp-gitee-ent/operations/documents"
-	"gitee.com/oschina/mcp-gitee-ent/operations/enterprises"
-	"gitee.com/oschina/mcp-gitee-ent/operations/groups"
-	"gitee.com/oschina/mcp-gitee-ent/operations/issue_states"
-	"gitee.com/oschina/mcp-gitee-ent/operations/issue_types"
-	"gitee.com/oschina/mcp-gitee-ent/operations/issues"
-	"gitee.com/oschina/mcp-gitee-ent/operations/labels"
-	"gitee.com/oschina/mcp-gitee-ent/operations/members"
-	"gitee.com/oschina/mcp-gitee-ent/operations/programs"
-	"gitee.com/oschina/mcp-gitee-ent/operations/pulls"
-	"gitee.com/oschina/mcp-gitee-ent/operations/repository"
-	"gitee.com/oschina/mcp-gitee-ent/operations/scrum_sprints"
-	"gitee.com/oschina/mcp-gitee-ent/operations/scrum_versions"
-	"gitee.com/oschina/mcp-gitee-ent/operations/user"
+	"gitee.com/oschina/mcp-gitee-ent/catalog"
+	"gitee.com/oschina/mcp-gitee-ent/operations/discovery"
+	"gitee.com/oschina/mcp-gitee-ent/toolspecs"
 	"gitee.com/oschina/mcp-gitee-ent/utils"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
@@ -37,7 +26,11 @@ var (
 // allowing predefined options to be passed during registration.
 func wrapOptionHandler(handler utils.OptionHandlerFunc, opts ...utils.Option) server.ToolHandlerFunc {
 	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		// Call the original handler, passing the captured options.
+		if timeout := utils.ToolTimeout(); timeout > 0 {
+			var cancel context.CancelFunc
+			ctx, cancel = context.WithTimeout(ctx, timeout)
+			defer cancel()
+		}
 		return handler(ctx, request, opts...)
 	}
 }
@@ -51,107 +44,73 @@ func newMCPServer() *server.MCPServer {
 	)
 }
 
-func addTool(s *server.MCPServer, tool mcp.Tool, handleFunc utils.OptionHandlerFunc) {
-	enabledToolsets := getEnabledToolsets()
-	if len(enabledToolsets) == 0 {
-		s.AddTool(tool, wrapOptionHandler(handleFunc))
-		return
+func addTools(s *server.MCPServer) {
+	registry, err := buildToolCatalog()
+	if err != nil {
+		panic(fmt.Errorf("build tool catalog: %w", err))
 	}
 
-	for i := range enabledToolsets {
-		enabledToolsets[i] = strings.TrimSpace(enabledToolsets[i])
+	for _, spec := range registry.List() {
+		if !spec.Visible {
+			continue
+		}
+		s.AddTool(spec.Tool, wrapOptionHandler(spec.Handler, spec.Options...))
 	}
 
-	for _, keepTool := range enabledToolsets {
-		if tool.Name == keepTool {
-			s.AddTool(tool, wrapOptionHandler(handleFunc))
-			return
+	addDiscoveryTools(s, registry)
+}
+
+// buildToolCatalog builds the full catalog and applies the existing
+// ENABLED_TOOLSETS / DISABLED_TOOLSETS semantics to visibility and invocation.
+func buildToolCatalog() (*catalog.Registry, error) {
+	return toolspecs.Build(toolAllowed)
+}
+
+// toolAllowed mirrors the historical registration behavior: an enabled list is
+// an exclusive allowlist; otherwise a disabled list is a denylist.
+func toolAllowed(name string) bool {
+	if enabled := getEnabledToolsets(); len(enabled) > 0 {
+		for _, candidate := range enabled {
+			if strings.TrimSpace(candidate) == name {
+				return true
+			}
+		}
+		return false
+	}
+
+	for _, candidate := range getDisabledToolsets() {
+		if strings.TrimSpace(candidate) == name {
+			return false
 		}
 	}
+	return true
 }
 
-func disableTools(s *server.MCPServer) {
-	if enabledToolsetsFlag != "" {
-		enabledToolsetsFlag = os.Getenv("ENABLED_TOOLSETS")
+// infrastructureToolAllowed keeps discovery tools available even when an
+// enabled-tools allowlist is configured, unless they are explicitly disabled.
+func infrastructureToolAllowed(name string) bool {
+	for _, candidate := range getDisabledToolsets() {
+		if strings.TrimSpace(candidate) == name {
+			return false
+		}
 	}
-
-	if enabledToolsetsFlag != "" {
-		return
-	}
-
-	if disabledTools := getDisabledToolsets(); len(disabledTools) > 0 {
-		s.DeleteTools(disabledTools...)
-	}
+	return true
 }
 
-func addTools(s *server.MCPServer) {
-	// Documents
-	addTool(s, documents.CreateDocumentTool, documents.CreateDocumentHandleFunc)
-	addTool(s, documents.CreateDocumentNodeTool, documents.CreateDocumentNodeHandleFunc)
-	addTool(s, documents.RenameDocumentFolderTool, documents.RenameDocumentFolderHandleFunc)
-	addTool(s, documents.ListDocumentsTool, documents.ListDocumentsHandleFunc)
-	addTool(s, documents.ListDocumentPagesTool, documents.ListDocumentPagesHandleFunc)
-	addTool(s, documents.GetDocumentPageTool, documents.GetDocumentPageHandleFunc)
-	addTool(s, documents.UploadDocumentTool, documents.UploadDocumentHandleFunc)
-	addTool(s, documents.DownloadDocumentTool, documents.DownloadDocumentHandleFunc)
-	addTool(s, documents.UpdateDocumentPageTool, documents.UpdateDocumentPageHandleFunc)
+func addDiscoveryTools(s *server.MCPServer, registry *catalog.Registry) {
+	searchHandler := discovery.NewSearchToolsHandler(registry, nil)
+	inspectHandler := discovery.NewInspectToolHandler(registry)
+	invokeHandler := discovery.NewInvokeToolHandler(registry)
 
-	// Issues
-	addTool(s, issues.ListIssuesTool, issues.ListIssuesHandleFunc)
-	addTool(s, issues.CreateIssueTool, issues.CreateIssueHandleFunc)
-	addTool(s, issues.GetIssueDetailTool, issues.GetIssueDetailHandleFunc)
-	addTool(s, issues.UpdateIssueTool, issues.UpdateIssueHandleFunc)
-	addTool(s, issues.CommentIssueTool, issues.CommentIssueHandleFunc)
-	addTool(s, issues.ListIssueCommentsTool, issues.ListIssueCommentsHandleFunc)
-
-	// Repositories
-	addTool(s, repository.ListRepositoriesTool, repository.ListRepositoriesHandleFunc)
-	addTool(s, repository.CreateRepositoryTool, repository.CreateRepositoryHandleFunc)
-	addTool(s, repository.CreateReleaseTool, repository.CreateReleaseHandleFunc)
-	addTool(s, repository.ListReleasesTool, repository.ListReleasesHandleFunc)
-	addTool(s, repository.GetRepoTreeTool, repository.GetRepoTreeHandleFunc)
-	addTool(s, repository.GetFileContentTool, repository.GetFileContentHandleFunc)
-
-	// Pulls
-	addTool(s, pulls.ListEntPullsTool, pulls.ListEntPullsHandleFunc)
-	addTool(s, pulls.CreateEntPullTool, pulls.CreateEntPullHandleFunc)
-	addTool(s, pulls.GetEntPullDetailTool, pulls.GetPullDetailHandleFunc)
-	addTool(s, pulls.GetPullDiffTool, pulls.GetPullDiffHandleFunc)
-	addTool(s, pulls.CommentPullTool, pulls.CommentPullHandleFunc)
-	addTool(s, pulls.ListPullCommentsTool, pulls.ListPullCommentsHandleFunc)
-	addTool(s, pulls.MergePullTool, pulls.MergePullHandleFunc)
-	addTool(s, pulls.UpdatePullTool, pulls.UpdateEntPullHandleFunc)
-
-	// Enterprises
-	addTool(s, enterprises.ListEnterprisesTool, enterprises.ListEnterprisesHandleFunc)
-
-	// Labels
-	addTool(s, labels.ListEnterpriseLabelsTool, labels.ListEnterpriseLabelsHandleFunc)
-
-	// Issue Types
-	addTool(s, issue_types.ListIssueTypesTool, issue_types.ListIssueTypesHandleFunc)
-
-	// Issue States
-	addTool(s, issue_states.ListIssueTypeStatesTool, issue_states.ListIssueTypeStatesHandleFunc)
-
-	// Users
-	addTool(s, user.GetUserInfoTool, user.GetUserInfoHandleFunc)
-
-	// Programs
-	addTool(s, programs.ListProgramsTool, programs.ListProgramsHandleFunc)
-
-	// Scrum Sprints
-	addTool(s, scrum_sprints.CreateScrumSprintTool, scrum_sprints.CreateScrumSprintHandleFunc)
-	addTool(s, scrum_sprints.ListScrumSprintsTool, scrum_sprints.ListScrumSprintsHandleFunc)
-
-	// Scrum Versions
-	addTool(s, scrum_versions.ListScrumVersionsTool, scrum_versions.ListScrumVersionsHandleFunc)
-
-	// Members
-	addTool(s, members.ListEntMembersTool, members.ListEntMembersHandleFunc)
-
-	// Groups
-	addTool(s, groups.ListEntGroupsTool, groups.ListEntGroupsHandleFunc)
+	if infrastructureToolAllowed(discovery.SearchTools) {
+		s.AddTool(discovery.SearchToolsTool, wrapOptionHandler(searchHandler.Handle))
+	}
+	if infrastructureToolAllowed(discovery.InspectTool) {
+		s.AddTool(discovery.InspectToolTool, wrapOptionHandler(inspectHandler.Handle))
+	}
+	if infrastructureToolAllowed(discovery.InvokeTool) {
+		s.AddTool(discovery.InvokeToolTool, wrapOptionHandler(invokeHandler.Handle))
+	}
 }
 
 func getDisabledToolsets() []string {
@@ -189,7 +148,6 @@ func run(transport, addr string) error {
 	s := newMCPServer()
 
 	addTools(s)
-	disableTools(s)
 
 	switch transport {
 	case "stdio":

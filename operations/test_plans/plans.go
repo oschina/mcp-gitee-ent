@@ -72,11 +72,14 @@ var UpdateTestPlanTool = mcp.NewTool(UpdateTestPlan,
 )
 
 var UpdateTestPlanStateTool = mcp.NewTool(UpdateTestPlanState,
-	mcp.WithDescription("Change a test plan state: 0 not started, 1 in progress, 2 completed, 3 suspended."),
+	mcp.WithDescription("Change a test plan state: 0 not started, 1 in progress, 2 completed, 3 suspended. "+
+		"Allowed transitions are constrained: 0 -> 1 or 3, 1 -> 2 or 3, 3 -> 0 or 1. "+
+		"Setting the state the plan already has is rejected by the API with 'illegal test plan state', "+
+		"so read the plan with get_test_plan first. Adding the first case to a plan moves it to 1 automatically."),
 	mcp.WithNumber("enterprise_id", mcp.Description("Enterprise ID"), mcp.Required()),
 	mcp.WithNumber("program_id", mcp.Description("Project ID required by test management APIs."), mcp.Required()),
 	mcp.WithNumber("test_plan_id", mcp.Description("Test plan ID."), mcp.Required()),
-	mcp.WithNumber("state", mcp.Description("New state: 0 not started, 1 in progress, 2 completed, 3 suspended."), mcp.Required(), mcp.Min(0), mcp.Max(3)),
+	mcp.WithNumber("state", mcp.Description("Target state: 0 not started, 1 in progress, 2 completed, 3 suspended. Transitions: 0->1|3, 1->2|3, 3->0|1."), mcp.Required(), mcp.Min(0), mcp.Max(3)),
 )
 
 func ListTestPlansHandleFunc(ctx context.Context, request mcp.CallToolRequest, opts ...utils.Option) (*mcp.CallToolResult, error) {
@@ -243,5 +246,8 @@ func DeleteTestPlanHandleFunc(ctx context.Context, request mcp.CallToolRequest, 
 	}
 	opts = append(opts, utils.WithQuery(map[string]interface{}{"program_id": programID}))
 	client := utils.NewGiteeClient("DELETE", fmt.Sprintf("/%d/test_plans/%d", enterpriseID, testPlanID), opts...)
-	return client.HandleMCPResultContext(ctx, nil)
+	if result, err := client.HandleMCPResultContext(ctx, nil); result != nil && result.IsError {
+		return result, err
+	}
+	return utils.MCPActionResult(map[string]any{"test_plan_id": testPlanID, "deleted": true})
 }

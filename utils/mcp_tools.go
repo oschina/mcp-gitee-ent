@@ -53,3 +53,24 @@ func CheckRequired(params map[string]interface{}, required ...string) (*mcp.Call
 	}
 	return nil, nil
 }
+
+// MCPActionResult reports a completed mutation that has no meaningful upstream
+// payload, echoing the identifiers the caller passed so the result is verifiable.
+func MCPActionResult(fields map[string]any) (*mcp.CallToolResult, error) {
+	result := make(map[string]any, len(fields)+1)
+	result["ok"] = true
+	for key, value := range fields {
+		result[key] = value
+	}
+	return MCPJSONResult(result)
+}
+
+// MCPListResult wraps a bare list in the {data,total_count} envelope used by
+// most list tools so callers see one predictable shape.
+func MCPListResult(data any) (*mcp.CallToolResult, error) {
+	count := 0
+	if list, ok := data.([]any); ok {
+		count = len(list)
+	}
+	return MCPJSONResult(map[string]any{"data": data, "total_count": count})
+}

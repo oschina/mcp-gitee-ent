@@ -88,7 +88,10 @@ func DeleteIssueNoteHandleFunc(ctx context.Context, request mcp.CallToolRequest,
 		fmt.Sprintf("/%d/issues/%s/notes/%s", enterpriseID, issueID, noteID),
 		opts...,
 	)
-	return client.HandleMCPResultContext(ctx, nil)
+	if result, err := client.HandleMCPResultContext(ctx, nil); result != nil && result.IsError {
+		return result, err
+	}
+	return utils.MCPActionResult(map[string]any{"issue_id": issueID, "note_id": noteID, "deleted": true})
 }
 
 func LinkIssuePullRequestHandleFunc(ctx context.Context, request mcp.CallToolRequest, opts ...utils.Option) (*mcp.CallToolResult, error) {
@@ -116,7 +119,10 @@ func issuePullRequestLink(ctx context.Context, request mcp.CallToolRequest, opts
 		opts...,
 	)
 	if method == "DELETE" {
-		return client.HandleMCPResultContext(ctx, nil)
+		if result, err := client.HandleMCPResultContext(ctx, nil); result != nil && result.IsError {
+			return result, err
+		}
+		return utils.MCPActionResult(map[string]any{"issue_id": issueID, "pull_request_id": pullRequestID, "unlinked": true})
 	}
 	var data any
 	return client.HandleMCPResultContext(ctx, &data)

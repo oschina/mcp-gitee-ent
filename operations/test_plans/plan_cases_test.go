@@ -4,7 +4,10 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"strings"
 	"testing"
+
+	"github.com/mark3labs/mcp-go/mcp"
 )
 
 func TestListAndGetTestPlanCase(t *testing.T) {
@@ -66,6 +69,34 @@ func TestAddTestCasesToPlanResolvesLatestApprovedVersion(t *testing.T) {
 	}
 }
 
+func TestAddTestCasesToPlanHandlesNoContent(t *testing.T) {
+	withTestServer(t, func(w http.ResponseWriter, request *http.Request) {
+		if request.URL.Path == "/7/test_cases/101/test_case_versions" {
+			_, _ = io.WriteString(w, `{"data":[{"id":12,"state":2}]}`)
+			return
+		}
+		if request.URL.Path != "/7/test_plans/5/test_cases/add_test_cases" {
+			t.Errorf("unexpected path %s", request.URL.Path)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	})
+
+	result := call(t, AddTestCasesToPlanHandleFunc, map[string]any{
+		"enterprise_id": 7, "program_id": 9, "test_plan_id": 5, "case_ids": []any{101},
+	})
+	if result.IsError {
+		t.Fatalf("add error: %#v", result.Content)
+	}
+	content, ok := result.Content[0].(mcp.TextContent)
+	if !ok {
+		t.Fatalf("content type = %T", result.Content[0])
+	}
+	if !strings.Contains(content.Text, `"queued":true`) {
+		t.Fatalf("ack = %s", content.Text)
+	}
+}
+
 func TestAddTestCasesRequiresCaseIDsOrVersionIDs(t *testing.T) {
 	withTestServer(t, func(w http.ResponseWriter, request *http.Request) {
 		t.Fatal("HTTP request must not be sent without case_ids or version_ids")
@@ -75,6 +106,21 @@ func TestAddTestCasesRequiresCaseIDsOrVersionIDs(t *testing.T) {
 	})
 	if !result.IsError {
 		t.Fatalf("result = %#v, want error", result)
+	}
+}
+
+func TestCreateTestCaseInPlanRequiresSteps(t *testing.T) {
+	for _, steps := range []any{nil, []any{}, []any{map[string]any{"description": ""}}} {
+		withTestServer(t, func(w http.ResponseWriter, request *http.Request) {
+			t.Fatal("HTTP request must not be sent without valid case_steps")
+		})
+		arguments := map[string]any{"enterprise_id": 7, "program_id": 9, "test_plan_id": 5, "title": "Plan case", "module_id": 3}
+		if steps != nil {
+			arguments["case_steps"] = steps
+		}
+		if result := call(t, CreateTestCaseInPlanHandleFunc, arguments); !result.IsError {
+			t.Fatalf("result = %#v, want error for steps %#v", result, steps)
+		}
 	}
 }
 
@@ -99,6 +145,7 @@ func TestCreateAndUpdateTestPlanCase(t *testing.T) {
 
 	if result := call(t, CreateTestCaseInPlanHandleFunc, map[string]any{
 		"enterprise_id": 7, "program_id": 9, "test_plan_id": 5, "title": "Plan case", "module_id": 3,
+		"case_steps": []any{map[string]any{"description": "Open page"}},
 	}); result.IsError {
 		t.Fatalf("create error: %#v", result.Content)
 	}
@@ -151,34 +198,41 @@ func TestLinkUnlinkAndListPlanCaseIssues(t *testing.T) {
 	}
 }
 
-func TestCreateAndUpdateExecution(t *testing.T) {
+func TestExecuteTestPlanCases(t *testing.T) {
 	withTestServer(t, func(w http.ResponseWriter, request *http.Request) {
+		if request.Method != http.MethodPost || request.URL.Path != "/7/test_plans/5/batch_execute" {
+			t.Errorf("request = %s %s", request.Method, request.URL.Path)
+		}
 		body := map[string]any{}
 		_ = json.NewDecoder(request.Body).Decode(&body)
-		switch {
-		case request.Method == http.MethodPost && request.URL.Path == "/7/test_plans/5/test_cases/101/execution":
-			if body["execute_state"] != float64(1) {
-				t.Errorf("create body = %#v", body)
-			}
-		case request.Method == http.MethodPut && request.URL.Path == "/7/test_plans/5/test_cases/101/execution/55":
-			if body["execute_state"] != float64(3) {
-				t.Errorf("update body = %#v", body)
-			}
-		default:
-			t.Errorf("unexpected request %s %s", request.Method, request.URL.Path)
+		if body["execute_state"] != float64(1) {
+			t.Errorf("execute_state = %#v", body["execute_state"])
 		}
-		_, _ = io.WriteString(w, `{"id":55}`)
+		ids, ok := body["test_plan_case_ids"].([]any)
+		if !ok || len(ids) != 2 {
+			t.Errorf("test_plan_case_ids = %#v", body["test_plan_case_ids"])
+		}
+		_, _ = io.WriteString(w, `{"message":"queued"}`)
 	})
 
-	if result := call(t, CreateTestPlanCaseExecutionHandleFunc, map[string]any{
-		"enterprise_id": 7, "program_id": 9, "test_plan_id": 5, "test_case_id": 101, "execute_state": 1,
-	}); result.IsError {
-		t.Fatalf("create execution error: %#v", result.Content)
+	result := call(t, ExecuteTestPlanCasesHandleFunc, map[string]any{
+		"enterprise_id": 7, "program_id": 9, "test_plan_id": 5,
+		"test_plan_case_ids": []any{2001, 2002}, "execute_state": 1,
+	})
+	if result.IsError {
+		t.Fatalf("execute error: %#v", result.Content)
 	}
-	if result := call(t, UpdateTestPlanCaseExecutionHandleFunc, map[string]any{
-		"enterprise_id": 7, "program_id": 9, "test_plan_id": 5, "test_case_id": 101, "execution_id": 55, "execute_state": 3,
-	}); result.IsError {
-		t.Fatalf("update execution error: %#v", result.Content)
+}
+
+func TestExecuteTestPlanCasesRequiresStateOrAssignee(t *testing.T) {
+	withTestServer(t, func(w http.ResponseWriter, request *http.Request) {
+		t.Fatal("HTTP request must not be sent without execute_state or assignee_id")
+	})
+	result := call(t, ExecuteTestPlanCasesHandleFunc, map[string]any{
+		"enterprise_id": 7, "program_id": 9, "test_plan_id": 5, "test_plan_case_ids": []any{2001},
+	})
+	if !result.IsError {
+		t.Fatalf("result = %#v, want error", result)
 	}
 }
 

@@ -33,7 +33,9 @@ var SearchDocumentsTool = mcp.NewTool(SearchDocuments,
 )
 
 var ListRecentDocumentsTool = mcp.NewTool(ListRecentDocuments,
-	mcp.WithDescription("List recently edited documents, optionally scoped to a project."),
+	mcp.WithDescription("List recently edited documents, optionally scoped to a project. "+
+		"Each item uses its own ID names: id is the document node ID (doc_node_id for link_issue_document, "+
+		"get_document_node, and list_document_versions) and file_id is the document ID used by the document page tools."),
 	mcp.WithNumber("enterprise_id", mcp.Description("Enterprise ID"), mcp.Required()),
 	mcp.WithNumber("program_id", mcp.Description("Optional project ID.")),
 	mcp.WithNumber("page", mcp.Description("Page number, starting at 1."), mcp.Min(1)),
@@ -42,7 +44,8 @@ var ListRecentDocumentsTool = mcp.NewTool(ListRecentDocuments,
 )
 
 var ListSharedDocumentsTool = mcp.NewTool(ListSharedDocuments,
-	mcp.WithDescription("List documents shared with the current user."),
+	mcp.WithDescription("List documents shared with the current user. "+
+		"As in list_recent_documents, id is the document node ID and file_id is the document ID used by the page tools."),
 	mcp.WithNumber("enterprise_id", mcp.Description("Enterprise ID"), mcp.Required()),
 	mcp.WithNumber("program_id", mcp.Description("Optional project ID.")),
 	mcp.WithString("search", mcp.Description("Search keyword.")),
@@ -65,9 +68,10 @@ var GetDocumentNodeTool = mcp.NewTool(GetDocumentNode,
 )
 
 var ListDocumentVersionsTool = mcp.NewTool(ListDocumentVersions,
-	mcp.WithDescription("List historical versions of an attachment document node."),
+	mcp.WithDescription("List historical versions of an attachment (AttachFile) document node. "+
+		"Document nodes with file_type WikiInfo return 404 'node not found'; use get_document_node to check the type first."),
 	mcp.WithNumber("enterprise_id", mcp.Description("Enterprise ID"), mcp.Required()),
-	mcp.WithNumber("doc_node_id", mcp.Description("Document node ID."), mcp.Required()),
+	mcp.WithNumber("doc_node_id", mcp.Description("AttachFile document node ID; WikiInfo nodes are not supported."), mcp.Required()),
 	mcp.WithNumber("page", mcp.Description("Page number, starting at 1."), mcp.Min(1)),
 	mcp.WithNumber("per_page", mcp.Description("Page size, max 100."), mcp.Min(1), mcp.Max(100)),
 	mcp.WithReadOnlyHintAnnotation(true),

@@ -47,7 +47,7 @@ func TestCreateLabelPostsPayload(t *testing.T) {
 		if err := json.NewDecoder(request.Body).Decode(&body); err != nil {
 			t.Fatalf("decode body: %v", err)
 		}
-		if body["name"] != "backend" || body["color"] != "#1E90FF" {
+		if body["name"] != "backend" || body["color"] != "1E90FF" {
 			t.Errorf("body = %#v", body)
 		}
 		_, _ = io.WriteString(w, `{"id":5,"name":"backend"}`)
@@ -86,7 +86,7 @@ func TestUpdateLabelPutsNameAndColor(t *testing.T) {
 		if err := json.NewDecoder(request.Body).Decode(&body); err != nil {
 			t.Fatalf("decode body: %v", err)
 		}
-		if body["name"] != "frontend" || body["color"] != "#FF0000" {
+		if body["name"] != "frontend" || body["color"] != "FF0000" {
 			t.Errorf("body = %#v", body)
 		}
 		_, _ = io.WriteString(w, `{"id":5}`)

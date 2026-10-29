@@ -15,7 +15,8 @@ const (
 )
 
 var ListBaselinesTool = mcp.NewTool(ListBaselines,
-	mcp.WithDescription("List project baselines. Filter by status, baseline type, keyword, sprint, assignee, or creator."),
+	mcp.WithDescription("List project baselines. Filter by status, baseline type, keyword, sprint, assignee, or creator. "+
+		"Baselines must be enabled for the enterprise: otherwise the API answers 404 with '功能模块错误' (function module error)."),
 	mcp.WithNumber("enterprise_id", mcp.Description("Enterprise ID"), mcp.Required()),
 	mcp.WithNumber("program_id", mcp.Description("Project ID."), mcp.Required()),
 	mcp.WithNumber("status", mcp.Description("Baseline status: 0 planning, 1 published."), mcp.Min(0), mcp.Max(1)),

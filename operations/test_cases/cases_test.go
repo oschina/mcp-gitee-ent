@@ -75,6 +75,14 @@ func TestCreateAndUpdateTestCase(t *testing.T) {
 			if body["title"] != "Login" || body["module_id"] != float64(3) || body["program_id"] != float64(9) {
 				t.Errorf("create body = %#v", body)
 			}
+			steps, ok := body["case_steps"].([]any)
+			if !ok || len(steps) != 1 {
+				t.Fatalf("case_steps = %#v", body["case_steps"])
+			}
+			step := steps[0].(map[string]any)
+			if step["description"] != "Open page" || step["expected_result"] != "Page shown" {
+				t.Errorf("step = %#v", step)
+			}
 		case request.Method == http.MethodPut && request.URL.Path == "/7/test_cases/5":
 			if body["priority"] != float64(1) {
 				t.Errorf("update body = %#v", body)
@@ -87,6 +95,7 @@ func TestCreateAndUpdateTestCase(t *testing.T) {
 
 	if result := call(t, CreateTestCaseHandleFunc, map[string]any{
 		"enterprise_id": 7, "program_id": 9, "title": "Login", "module_id": 3,
+		"case_steps": []any{map[string]any{"description": "Open page", "expected_result": "Page shown"}},
 	}); result.IsError {
 		t.Fatalf("create error: %#v", result.Content)
 	}
@@ -136,9 +145,25 @@ func TestCreateTestCaseRequiresModule(t *testing.T) {
 	})
 	result := call(t, CreateTestCaseHandleFunc, map[string]any{
 		"enterprise_id": 7, "program_id": 9, "title": "Login",
+		"case_steps": []any{map[string]any{"description": "Open page"}},
 	})
 	if !result.IsError {
 		t.Fatalf("result = %#v, want error", result)
+	}
+}
+
+func TestCreateTestCaseRequiresSteps(t *testing.T) {
+	for _, steps := range []any{nil, []any{}, []any{map[string]any{"description": "  "}}} {
+		withTestServer(t, func(w http.ResponseWriter, request *http.Request) {
+			t.Fatal("HTTP request must not be sent without valid case_steps")
+		})
+		arguments := map[string]any{"enterprise_id": 7, "program_id": 9, "title": "Login", "module_id": 3}
+		if steps != nil {
+			arguments["case_steps"] = steps
+		}
+		if result := call(t, CreateTestCaseHandleFunc, arguments); !result.IsError {
+			t.Fatalf("result = %#v, want error for steps %#v", result, steps)
+		}
 	}
 }
 

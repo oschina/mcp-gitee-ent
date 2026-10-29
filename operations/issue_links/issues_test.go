@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"gitee.com/oschina/mcp-gitee-ent/utils"
@@ -391,11 +392,20 @@ func TestIssueCollaborationWrites(t *testing.T) {
 				t.Errorf("linked docs = %s %v", request.Method, request.URL.Query())
 			}
 		case "/7/issues/12/test_plan_cases":
-			if request.Method != http.MethodPost && request.Method != http.MethodDelete {
+			switch request.Method {
+			case http.MethodPost:
+				if _, ok := body["test_plan_case_ids"]; !ok {
+					t.Errorf("test case link body = %#v", body)
+				}
+			case http.MethodDelete:
+				if request.URL.Query().Get("test_plan_case_id") == "" {
+					t.Errorf("unlink query = %v, want test_plan_case_id", request.URL.Query())
+				}
+				if _, ok := body["test_plan_case_ids"]; ok {
+					t.Errorf("unlink must not send the plural body: %#v", body)
+				}
+			default:
 				t.Errorf("test case link method = %s", request.Method)
-			}
-			if _, ok := body["test_plan_case_ids"]; !ok {
-				t.Errorf("test case link body = %#v", body)
 			}
 		default:
 			t.Errorf("unexpected path %s", request.URL.Path)
@@ -493,5 +503,37 @@ func TestUnlinkIssueDocumentReturnsRemainingLinks(t *testing.T) {
 	}
 	if deleteCalls != 1 || listCalls != 1 {
 		t.Fatalf("deleteCalls = %d, listCalls = %d, want 1/1", deleteCalls, listCalls)
+	}
+}
+
+func TestUnlinkIssueTestCasesUsesSingularParamPerID(t *testing.T) {
+	unlinked := map[string]int{}
+	withTestServer(t, func(w http.ResponseWriter, request *http.Request) {
+		if request.Method != http.MethodDelete || request.URL.Path != "/7/issues/I123/test_plan_cases" {
+			t.Errorf("request = %s %s", request.Method, request.URL.Path)
+			return
+		}
+		if request.URL.Query().Get("qt") != "ident" {
+			t.Errorf("qt = %q, want ident", request.URL.Query().Get("qt"))
+		}
+		unlinked[request.URL.Query().Get("test_plan_case_id")]++
+		w.WriteHeader(http.StatusNoContent)
+	})
+
+	result := call(t, UnlinkIssueTestCasesHandleFunc, map[string]any{
+		"enterprise_id": 7, "issue_id": "I123", "test_plan_case_ids": []any{2001, 2002},
+	})
+	if result.IsError {
+		t.Fatalf("result is error: %#v", result.Content)
+	}
+	if unlinked["2001"] != 1 || unlinked["2002"] != 1 {
+		t.Fatalf("unlink calls = %#v, want one call per id", unlinked)
+	}
+	content, ok := result.Content[0].(mcp.TextContent)
+	if !ok {
+		t.Fatalf("content type = %T", result.Content[0])
+	}
+	if !strings.Contains(content.Text, `"linked":false`) {
+		t.Fatalf("ack = %s", content.Text)
 	}
 }

@@ -20,6 +20,8 @@ func TestKanbanPaths(t *testing.T) {
 				t.Errorf("query = %v", request.URL.Query())
 			}
 		case "/7/programs/9/kanbans/5/columns":
+			_, _ = io.WriteString(w, `[]`)
+			return
 		default:
 			t.Errorf("unexpected path %s", request.URL.Path)
 		}

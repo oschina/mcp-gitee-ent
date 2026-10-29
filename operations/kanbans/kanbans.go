@@ -74,8 +74,12 @@ func ListKanbanColumnsHandleFunc(ctx context.Context, request mcp.CallToolReques
 		fmt.Sprintf("/%d/programs/%d/kanbans/%d/columns", enterpriseID, programID, kanbanID),
 		opts...,
 	)
-	var data any
-	return client.HandleMCPResultContext(ctx, &data)
+	var data []any
+	result, err := client.HandleMCPResultContext(ctx, &data)
+	if result != nil && result.IsError {
+		return result, err
+	}
+	return utils.MCPListResult(data)
 }
 
 func parseEnterprise(request mcp.CallToolRequest) (map[string]any, int, error) {

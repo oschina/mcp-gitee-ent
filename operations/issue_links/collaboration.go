@@ -113,7 +113,7 @@ var LinkIssueTestCasesTool = mcp.NewTool(LinkIssueTestCases,
 )
 
 var UnlinkIssueTestCasesTool = mcp.NewTool(UnlinkIssueTestCases,
-	mcp.WithDescription("Unlink test plan cases from an issue."),
+	mcp.WithDescription("Unlink test plan cases from an issue. Accepts multiple test_plan_case_ids and removes them one by one."),
 	mcp.WithNumber("enterprise_id", mcp.Description("Enterprise ID"), mcp.Required()),
 	mcp.WithString("issue_id", mcp.Description("Issue ID or issue ident."), mcp.Required()),
 	mcp.WithArray("test_plan_case_ids", mcp.Description("Test plan case IDs."), mcp.Required(), mcp.Items(map[string]any{"type": "number"})),
@@ -135,7 +135,10 @@ func SetIssueStarredHandleFunc(ctx context.Context, request mcp.CallToolRequest,
 	opts = appendQueryOpt(opts, issueID)
 	client := utils.NewGiteeClient(method, fmt.Sprintf("/%d/issues/%s/star", enterpriseID, issueID), opts...)
 	var data any
-	return client.HandleMCPResultContext(ctx, &data)
+	if result, err := client.HandleMCPResultContext(ctx, &data); result != nil && result.IsError {
+		return result, err
+	}
+	return utils.MCPActionResult(map[string]any{"issue_id": issueID, "starred": starred})
 }
 
 func AddIssueReactionHandleFunc(ctx context.Context, request mcp.CallToolRequest, opts ...utils.Option) (*mcp.CallToolResult, error) {
@@ -168,7 +171,10 @@ func RemoveIssueReactionHandleFunc(ctx context.Context, request mcp.CallToolRequ
 		return mcp.NewToolResultError(err.Error()), nil
 	}
 	client := utils.NewGiteeClient("DELETE", fmt.Sprintf("/%d/reactions/%d", enterpriseID, reactionID), opts...)
-	return client.HandleMCPResultContext(ctx, nil)
+	if result, err := client.HandleMCPResultContext(ctx, nil); result != nil && result.IsError {
+		return result, err
+	}
+	return utils.MCPActionResult(map[string]any{"reaction_id": reactionID, "deleted": true})
 }
 
 func AddIssueRelationHandleFunc(ctx context.Context, request mcp.CallToolRequest, opts ...utils.Option) (*mcp.CallToolResult, error) {
@@ -218,7 +224,10 @@ func RemoveIssueRelationHandleFunc(ctx context.Context, request mcp.CallToolRequ
 	}
 	opts = appendQueryOpt(opts, issueID)
 	client := utils.NewGiteeClient("DELETE", fmt.Sprintf("/%d/issues/%s/related_issue/%d", enterpriseID, issueID, linkIssueID), opts...)
-	return client.HandleMCPResultContext(ctx, nil)
+	if result, err := client.HandleMCPResultContext(ctx, nil); result != nil && result.IsError {
+		return result, err
+	}
+	return utils.MCPActionResult(map[string]any{"issue_id": issueID, "link_issue_id": linkIssueID, "unlinked": true})
 }
 
 func LinkIssueDocumentHandleFunc(ctx context.Context, request mcp.CallToolRequest, opts ...utils.Option) (*mcp.CallToolResult, error) {
@@ -305,10 +314,46 @@ func changeIssueTestCases(ctx context.Context, request mcp.CallToolRequest, opts
 	if err != nil || len(caseIDs) == 0 {
 		return mcp.NewToolResultError("test_plan_case_ids must contain at least one ID"), nil
 	}
+	if method == "DELETE" {
+		return unlinkIssueTestCases(ctx, opts, enterpriseID, issueID, caseIDs)
+	}
+
 	opts = append(opts, utils.WithPayload(map[string]any{"test_plan_case_ids": caseIDs}))
 	opts = appendQueryOpt(opts, issueID)
 	client := utils.NewGiteeClient(method, fmt.Sprintf("/%d/issues/%s/test_plan_cases", enterpriseID, issueID), opts...)
-	return client.HandleMCPResultContext(ctx, nil)
+	if result, err := client.HandleMCPResultContext(ctx, nil); result != nil && result.IsError {
+		return result, err
+	}
+	return utils.MCPActionResult(map[string]any{
+		"issue_id":           issueID,
+		"test_plan_case_ids": caseIDs,
+		"linked":             true,
+	})
+}
+
+// unlinkIssueTestCases removes the links one id at a time because the unlink
+// endpoint only accepts the singular test_plan_case_id parameter, unlike the
+// link endpoint which takes the plural test_plan_case_ids array.
+func unlinkIssueTestCases(ctx context.Context, opts []utils.Option, enterpriseID int, issueID string, caseIDs []int) (*mcp.CallToolResult, error) {
+	unlinked := make([]int, 0, len(caseIDs))
+	for _, caseID := range caseIDs {
+		query := issueQuery(nil, issueID, nil)
+		query["test_plan_case_id"] = caseID
+		client := utils.NewGiteeClient(
+			"DELETE",
+			fmt.Sprintf("/%d/issues/%s/test_plan_cases", enterpriseID, issueID),
+			append(append([]utils.Option{}, opts...), utils.WithQuery(query))...,
+		)
+		if result, err := client.HandleMCPResultContext(ctx, nil); result != nil && result.IsError {
+			return result, err
+		}
+		unlinked = append(unlinked, caseID)
+	}
+	return utils.MCPActionResult(map[string]any{
+		"issue_id":           issueID,
+		"test_plan_case_ids": unlinked,
+		"linked":             false,
+	})
 }
 
 func relationPayload(arguments map[string]any, requireRefType bool) (map[string]any, error) {

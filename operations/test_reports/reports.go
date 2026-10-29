@@ -30,7 +30,8 @@ var reportComponentIdents = []string{
 
 var CreateTestReportTool = mcp.NewTool(CreateTestReport,
 	mcp.WithDescription("Create a test report from one or more existing test plans. "+
-		"Requires title and test_plan_ids. Components are optional; when provided, each needs ident and title."),
+		"Requires title, test_plan_ids, and components: the Gitee API rejects a report with no components. "+
+		"Each component needs ident and title; start with basic-info and case-statistics."),
 	mcp.WithNumber("enterprise_id", mcp.Description("Enterprise ID"), mcp.Required()),
 	mcp.WithNumber("program_id", mcp.Description("Project ID required by test management APIs."), mcp.Required()),
 	mcp.WithString("title", mcp.Description("Test report title."), mcp.Required()),
@@ -41,7 +42,8 @@ var CreateTestReportTool = mcp.NewTool(CreateTestReport,
 	),
 	mcp.WithBoolean("state", mcp.Description("Whether the test report is marked as passed.")),
 	mcp.WithArray("components",
-		mcp.Description("Optional report components. Allowed ident values: basic-info, related-info, summary, overview, case-statistics, bug-statistics, users-bug-statistics, bug-list, issue-list, pr-list, execute-process, case-list, issue-statistics, users-issue-statistics."),
+		mcp.Description("Report components. Required by the Gitee API; at least one is needed. Allowed ident values: basic-info, related-info, summary, overview, case-statistics, bug-statistics, users-bug-statistics, bug-list, issue-list, pr-list, execute-process, case-list, issue-statistics, users-issue-statistics."),
+		mcp.Required(),
 		mcp.Items(map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -60,7 +62,7 @@ func CreateTestReportHandleFunc(ctx context.Context, request mcp.CallToolRequest
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
 	}
-	if checkResult, err := utils.CheckRequired(arguments, "title", "test_plan_ids"); err != nil {
+	if checkResult, err := utils.CheckRequired(arguments, "title", "test_plan_ids", "components"); err != nil {
 		return checkResult, err
 	}
 	enterpriseID, err := utils.SafelyConvertToInt(arguments["enterprise_id"])
@@ -79,17 +81,19 @@ func CreateTestReportHandleFunc(ctx context.Context, request mcp.CallToolRequest
 	if err != nil || len(testPlanIDs) == 0 {
 		return mcp.NewToolResultError("test_plan_ids must contain at least one test plan ID"), nil
 	}
+	components, ok := arguments["components"].([]any)
+	if !ok || len(components) == 0 {
+		return mcp.NewToolResultError("components must contain at least one component such as {\"ident\":\"basic-info\",\"title\":\"Basic info\"}"), nil
+	}
 
 	payload := map[string]any{
 		"program_id":    programID,
 		"title":         title,
 		"test_plan_ids": testPlanIDs,
+		"components":    components,
 	}
 	if value, ok := arguments["state"]; ok && value != nil {
 		payload["state"] = value
-	}
-	if value, ok := arguments["components"]; ok && value != nil {
-		payload["components"] = value
 	}
 	opts = append(opts, utils.WithPayload(payload))
 
@@ -261,7 +265,10 @@ func DeleteTestReportHandleFunc(ctx context.Context, request mcp.CallToolRequest
 	}
 	opts = append(opts, utils.WithQuery(map[string]interface{}{"program_id": programID}))
 	client := utils.NewGiteeClient("DELETE", fmt.Sprintf("/%d/test_reports/%d", enterpriseID, reportID), opts...)
-	return client.HandleMCPResultContext(ctx, nil)
+	if result, err := client.HandleMCPResultContext(ctx, nil); result != nil && result.IsError {
+		return result, err
+	}
+	return utils.MCPActionResult(map[string]any{"test_report_id": reportID, "deleted": true})
 }
 
 func parseScope(request mcp.CallToolRequest) (map[string]any, int, int, error) {

@@ -37,7 +37,7 @@ var SearchMembersTool = mcp.NewTool(SearchMembers,
 
 var GetMemberTool = mcp.NewTool(GetMember,
 	mcp.WithDescription("Get one enterprise member by user ID or username. "+
-		"Not for listing the member's repositories, programs, or groups."),
+		"Not for listing the member's projects, programs, or groups; use list_member_memberships for that."),
 	mcp.WithNumber("enterprise_id", mcp.Description("Enterprise ID"), mcp.Required()),
 	mcp.WithString("user_id", mcp.Description("User ID or username."), mcp.Required()),
 	mcp.WithReadOnlyHintAnnotation(true),
@@ -51,7 +51,8 @@ var GetMemberByEmailTool = mcp.NewTool(GetMemberByEmail,
 )
 
 var ListMemberMembershipsTool = mcp.NewTool(ListMemberMemberships,
-	mcp.WithDescription("List one membership collection for a member: repositories, programs, or groups."),
+	mcp.WithDescription("List one membership collection for a member: projects (repositories), programs, or groups. "+
+		"Use type=projects for repositories; the API does not accept repositories as a type value."),
 	mcp.WithNumber("enterprise_id", mcp.Description("Enterprise ID"), mcp.Required()),
 	mcp.WithString("user_id", mcp.Description("User ID or username."), mcp.Required()),
 	mcp.WithString("type",

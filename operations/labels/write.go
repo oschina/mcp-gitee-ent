@@ -16,13 +16,15 @@ const (
 	UpdateLabel = "update_label"
 )
 
-var labelColorPattern = regexp.MustCompile(`^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$`)
+var labelColorPattern = regexp.MustCompile(`^#?(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$`)
 
 var CreateLabelTool = mcp.NewTool(CreateLabel,
-	mcp.WithDescription("Create an enterprise label with a name and color. Use list_enterprise_labels to discover existing labels."),
+	mcp.WithDescription("Create an enterprise label with a name and color. Use list_enterprise_labels to discover existing labels. "+
+		"Color accepts 3 or 6 hex digits with an optional leading # and is normalized to the forms the Gitee API accepts: "+
+		"#RGB for 3 digits and RRGGBB (no #) for 6 digits."),
 	mcp.WithNumber("enterprise_id", mcp.Description("Enterprise ID"), mcp.Required()),
 	mcp.WithString("name", mcp.Description("Label name."), mcp.Required()),
-	mcp.WithString("color", mcp.Description("Label color in #RGB or #RRGGBB format."), mcp.Required()),
+	mcp.WithString("color", mcp.Description("Label color: 3 or 6 hex digits, with or without a leading #, for example #abc or #1E90FF."), mcp.Required()),
 )
 
 var UpdateLabelTool = mcp.NewTool(UpdateLabel,
@@ -30,7 +32,7 @@ var UpdateLabelTool = mcp.NewTool(UpdateLabel,
 	mcp.WithNumber("enterprise_id", mcp.Description("Enterprise ID"), mcp.Required()),
 	mcp.WithNumber("label_id", mcp.Description("Label ID."), mcp.Required()),
 	mcp.WithString("name", mcp.Description("Label name."), mcp.Required()),
-	mcp.WithString("color", mcp.Description("Label color in #RGB or #RRGGBB format."), mcp.Required()),
+	mcp.WithString("color", mcp.Description("Label color: 3 or 6 hex digits, with or without a leading #, for example #abc or #1E90FF."), mcp.Required()),
 )
 
 func CreateLabelHandleFunc(ctx context.Context, request mcp.CallToolRequest, opts ...utils.Option) (*mcp.CallToolResult, error) {
@@ -93,8 +95,24 @@ func labelPayload(arguments map[string]any) (map[string]any, error) {
 		return nil, fmt.Errorf("Parameter name must be a non-empty string")
 	}
 	color, ok := arguments["color"].(string)
-	if !ok || !labelColorPattern.MatchString(strings.TrimSpace(color)) {
-		return nil, fmt.Errorf("Parameter color must use #RGB or #RRGGBB format")
+	if !ok {
+		return nil, fmt.Errorf("Parameter color must be a string of 3 or 6 hex digits with an optional leading #")
 	}
-	return map[string]any{"name": strings.TrimSpace(name), "color": strings.TrimSpace(color)}, nil
+	normalizedColor, err := normalizeLabelColor(color)
+	if err != nil {
+		return nil, err
+	}
+	return map[string]any{"name": strings.TrimSpace(name), "color": normalizedColor}, nil
+}
+
+func normalizeLabelColor(color string) (string, error) {
+	trimmed := strings.TrimSpace(color)
+	if !labelColorPattern.MatchString(trimmed) {
+		return "", fmt.Errorf("Parameter color must be 3 or 6 hexadecimal digits with an optional leading #")
+	}
+	digits := strings.TrimPrefix(trimmed, "#")
+	if len(digits) == 3 {
+		return "#" + digits, nil
+	}
+	return digits, nil
 }

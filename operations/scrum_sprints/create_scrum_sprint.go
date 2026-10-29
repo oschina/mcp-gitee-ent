@@ -80,6 +80,21 @@ func CreateScrumSprintHandleFunc(ctx context.Context, request mcp.CallToolReques
 	opts = append(opts, utils.WithPayload(arguments))
 	giteeClient := utils.NewGiteeClient("POST", apiUrl, opts...)
 
-	data := types.ScrumSprint{}
-	return giteeClient.HandleMCPResult(&data)
+	var created types.ScrumSprint
+	if result, err := giteeClient.HandleMCPResultContext(ctx, &created); result != nil && result.IsError {
+		return result, err
+	}
+	if created.Id <= 0 {
+		return utils.MCPJSONResult(created)
+	}
+	detail := utils.NewGiteeClient(
+		"GET",
+		fmt.Sprintf("/%d/programs/%d/scrum_sprints/%d", enterpriseID, programID, created.Id),
+		utils.WithQuery(map[string]interface{}{"program_id": programID}),
+	)
+	var detailed any
+	if result, err := detail.HandleMCPResultContext(ctx, &detailed); err != nil || (result != nil && result.IsError) {
+		return utils.MCPJSONResult(created)
+	}
+	return utils.MCPJSONResult(detailed)
 }

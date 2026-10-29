@@ -17,7 +17,8 @@ const (
 )
 
 var ListWebhooksTool = mcp.NewTool(ListWebhooks,
-	mcp.WithDescription("List webhooks by scope, program, or repository."),
+	mcp.WithDescription("List webhooks by scope, program, or repository. scope defaults to all; "+
+		"the API rejects the call when scope, program_id, and project_id are all missing."),
 	mcp.WithNumber("enterprise_id", mcp.Description("Enterprise ID"), mcp.Required()),
 	mcp.WithString("scope", mcp.Description("Webhook scope."), mcp.Enum("all", "enterprise", "program", "project")),
 	mcp.WithNumber("program_id", mcp.Description("Optional project ID.")),
@@ -41,8 +42,11 @@ func ListWebhooksHandleFunc(ctx context.Context, request mcp.CallToolRequest, op
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
 	}
-	query := map[string]interface{}{}
-	for _, key := range []string{"scope", "program_id", "project_id", "page", "per_page"} {
+	query := map[string]interface{}{"scope": "all"}
+	if value, ok := arguments["scope"].(string); ok && value != "" {
+		query["scope"] = value
+	}
+	for _, key := range []string{"program_id", "project_id", "page", "per_page"} {
 		if value, ok := arguments[key]; ok {
 			query[key] = value
 		}

@@ -48,6 +48,8 @@ func TestListAndTreeModules(t *testing.T) {
 			if request.URL.Query().Get("program_id") != "9" {
 				t.Errorf("tree query = %v", request.URL.Query())
 			}
+			_, _ = io.WriteString(w, `[]`)
+			return
 		} else {
 			t.Errorf("unexpected path %s", request.URL.Path)
 		}

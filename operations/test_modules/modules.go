@@ -90,8 +90,12 @@ func GetTestCaseModuleTreeHandleFunc(ctx context.Context, request mcp.CallToolRe
 	}
 	opts = append(opts, utils.WithQuery(query))
 	client := utils.NewGiteeClient("GET", fmt.Sprintf("/%d/case_modules/as_tree", enterpriseID), opts...)
-	var data any
-	return client.HandleMCPResultContext(ctx, &data)
+	var data []any
+	result, err := client.HandleMCPResultContext(ctx, &data)
+	if result != nil && result.IsError {
+		return result, err
+	}
+	return utils.MCPListResult(data)
 }
 
 func CreateTestCaseModuleHandleFunc(ctx context.Context, request mcp.CallToolRequest, opts ...utils.Option) (*mcp.CallToolResult, error) {
@@ -129,7 +133,10 @@ func UpdateTestCaseModuleHandleFunc(ctx context.Context, request mcp.CallToolReq
 	payload := map[string]any{"program_id": programID, "name": name}
 	opts = append(opts, utils.WithPayload(payload))
 	client := utils.NewGiteeClient("PUT", fmt.Sprintf("/%d/case_modules/%d", enterpriseID, moduleID), opts...)
-	return client.HandleMCPResultContext(ctx, nil)
+	if result, err := client.HandleMCPResultContext(ctx, nil); result != nil && result.IsError {
+		return result, err
+	}
+	return utils.MCPActionResult(map[string]any{"case_module_id": moduleID, "name": name})
 }
 
 func MoveTestCaseModuleHandleFunc(ctx context.Context, request mcp.CallToolRequest, opts ...utils.Option) (*mcp.CallToolResult, error) {
@@ -161,7 +168,10 @@ func MoveTestCaseModuleHandleFunc(ctx context.Context, request mcp.CallToolReque
 	}
 	opts = append(opts, utils.WithPayload(payload))
 	client := utils.NewGiteeClient("PUT", fmt.Sprintf("/%d/case_modules/%d/move", enterpriseID, moduleID), opts...)
-	return client.HandleMCPResultContext(ctx, nil)
+	if result, err := client.HandleMCPResultContext(ctx, nil); result != nil && result.IsError {
+		return result, err
+	}
+	return utils.MCPActionResult(map[string]any{"case_module_id": moduleID, "direction": direction, "target_id": targetID})
 }
 
 func parseScope(request mcp.CallToolRequest) (map[string]any, int, int, error) {
@@ -217,5 +227,8 @@ func DeleteTestCaseModuleHandleFunc(ctx context.Context, request mcp.CallToolReq
 	}
 	opts = append(opts, utils.WithQuery(map[string]interface{}{"program_id": programID}))
 	client := utils.NewGiteeClient("DELETE", fmt.Sprintf("/%d/case_modules/%d", enterpriseID, moduleID), opts...)
-	return client.HandleMCPResultContext(ctx, nil)
+	if result, err := client.HandleMCPResultContext(ctx, nil); result != nil && result.IsError {
+		return result, err
+	}
+	return utils.MCPActionResult(map[string]any{"case_module_id": moduleID, "deleted": true})
 }

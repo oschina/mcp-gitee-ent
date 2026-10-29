@@ -53,7 +53,10 @@ var GetTestPlanCaseTool = mcp.NewTool(GetTestPlanCase,
 
 var AddTestCasesToPlanTool = mcp.NewTool(AddTestCasesToPlan,
 	mcp.WithDescription("Add existing test cases to a test plan. Provide case_ids for automatic version resolution, "+
-		"or version_ids in caseId-versionId,... format when versions are already known."),
+		"or version_ids in caseId-versionId,... format when versions are already known. "+
+		"Only cases with an approved version can be added; a freshly created case has none until it passes review, "+
+		"so use create_test_case_in_plan for new cases. Adding is asynchronous: the call returns a queued acknowledgement, "+
+		"verify with list_test_plan_cases."),
 	mcp.WithNumber("enterprise_id", mcp.Description("Enterprise ID"), mcp.Required()),
 	mcp.WithNumber("program_id", mcp.Description("Project ID required by test management APIs."), mcp.Required()),
 	mcp.WithNumber("test_plan_id", mcp.Description("Test plan ID."), mcp.Required()),
@@ -65,7 +68,8 @@ var AddTestCasesToPlanTool = mcp.NewTool(AddTestCasesToPlan,
 )
 
 var CreateTestCaseInPlanTool = mcp.NewTool(CreateTestCaseInPlan,
-	mcp.WithDescription("Create a new test case directly inside a test plan. Requires title and module_id."),
+	mcp.WithDescription("Create a new test case directly inside a test plan. Requires title, module_id, and case_steps. "+
+		"Every step needs a non-empty description; expected_result is optional. Step order follows the array order."),
 	mcp.WithNumber("enterprise_id", mcp.Description("Enterprise ID"), mcp.Required()),
 	mcp.WithNumber("program_id", mcp.Description("Project ID required by test management APIs."), mcp.Required()),
 	mcp.WithNumber("test_plan_id", mcp.Description("Test plan ID."), mcp.Required()),
@@ -78,8 +82,17 @@ var CreateTestCaseInPlanTool = mcp.NewTool(CreateTestCaseInPlan,
 	mcp.WithString("remark", mcp.Description("Remark.")),
 	mcp.WithString("attachment_ids", mcp.Description("Comma-separated attachment IDs.")),
 	mcp.WithArray("case_steps",
-		mcp.Description("Case steps. Each item supports description, expected_result, and sort."),
-		mcp.Items(map[string]any{"type": "object"}),
+		mcp.Description("Required case steps, at least one. Each item needs description; expected_result is optional."),
+		mcp.Required(),
+		mcp.MinItems(1),
+		mcp.Items(map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"description":     map[string]any{"type": "string"},
+				"expected_result": map[string]any{"type": "string"},
+			},
+			"required": []string{"description"},
+		}),
 	),
 )
 
@@ -205,8 +218,14 @@ func AddTestCasesToPlanHandleFunc(ctx context.Context, request mcp.CallToolReque
 		fmt.Sprintf("/%d/test_plans/%d/test_cases/add_test_cases", enterpriseID, testPlanID),
 		opts...,
 	)
-	var data any
-	return client.HandleMCPResultContext(ctx, &data)
+	if result, err := client.HandleMCPResultContext(ctx, nil); result != nil && result.IsError {
+		return result, err
+	}
+	return utils.MCPActionResult(map[string]any{
+		"test_plan_id": testPlanID,
+		"version_ids":  versionIDs,
+		"queued":       true,
+	})
 }
 
 func CreateTestCaseInPlanHandleFunc(ctx context.Context, request mcp.CallToolRequest, opts ...utils.Option) (*mcp.CallToolResult, error) {
@@ -220,10 +239,14 @@ func CreateTestCaseInPlanHandleFunc(ctx context.Context, request mcp.CallToolReq
 	if _, err := requiredInt(arguments, "module_id"); err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
 	}
-	payload := map[string]any{"program_id": programID}
+	caseSteps, err := utils.NormalizeCaseSteps(arguments["case_steps"])
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	payload := map[string]any{"program_id": programID, "case_steps": caseSteps}
 	for _, key := range []string{
 		"title", "precondition", "case_type", "priority", "maintainer_id",
-		"remark", "attachment_ids", "case_steps", "module_id",
+		"remark", "attachment_ids", "module_id",
 	} {
 		if value, ok := arguments[key]; ok && value != nil {
 			payload[key] = value
@@ -291,7 +314,15 @@ func changePlanCaseIssues(ctx context.Context, request mcp.CallToolRequest, opts
 		fmt.Sprintf("/%d/test_plans/%d/test_cases/%d/link_issues", enterpriseID, testPlanID, testCaseID),
 		opts...,
 	)
-	return client.HandleMCPResultContext(ctx, nil)
+	if result, err := client.HandleMCPResultContext(ctx, nil); result != nil && result.IsError {
+		return result, err
+	}
+	return utils.MCPActionResult(map[string]any{
+		"test_plan_id": testPlanID,
+		"test_case_id": testCaseID,
+		"issue_ids":    issueIDs,
+		"linked":       method == "POST",
+	})
 }
 
 func ListTestPlanCaseIssuesHandleFunc(ctx context.Context, request mcp.CallToolRequest, opts ...utils.Option) (*mcp.CallToolResult, error) {
@@ -382,7 +413,7 @@ func latestVersionID(ctx context.Context, enterpriseID, programID, caseID int) (
 	if bestApproved > 0 {
 		return bestApproved, nil
 	}
-	return 0, fmt.Errorf("test case %d has no approved version; approve a version or use create_test_case_in_plan", caseID)
+	return 0, fmt.Errorf("test case %d has no approved version, so it cannot be added by case_ids; use create_test_case_in_plan to create it directly inside the plan", caseID)
 }
 
 func intArray(value any) ([]int, error) {

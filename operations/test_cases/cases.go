@@ -46,7 +46,8 @@ var GetTestCaseTool = mcp.NewTool(GetTestCase,
 )
 
 var CreateTestCaseTool = mcp.NewTool(CreateTestCase,
-	mcp.WithDescription("Create a test case. Requires title and module_id; use get_test_case_module_tree to discover module IDs."),
+	mcp.WithDescription("Create a test case. Requires title, module_id, and case_steps; use get_test_case_module_tree to discover module IDs. "+
+		"Every step needs a non-empty description; expected_result is optional. Step order follows the array order."),
 	mcp.WithNumber("enterprise_id", mcp.Description("Enterprise ID"), mcp.Required()),
 	mcp.WithNumber("program_id", mcp.Description("Project ID required by test management APIs."), mcp.Required()),
 	mcp.WithString("title", mcp.Description("Test case title."), mcp.Required()),
@@ -58,8 +59,17 @@ var CreateTestCaseTool = mcp.NewTool(CreateTestCase,
 	mcp.WithString("remark", mcp.Description("Remark.")),
 	mcp.WithString("attachment_ids", mcp.Description("Comma-separated attachment IDs.")),
 	mcp.WithArray("case_steps",
-		mcp.Description("Case steps. Each item supports description, expected_result, and sort."),
-		mcp.Items(map[string]any{"type": "object"}),
+		mcp.Description("Required case steps, at least one. Each item needs description; expected_result is optional."),
+		mcp.Required(),
+		mcp.MinItems(1),
+		mcp.Items(map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"description":     map[string]any{"type": "string"},
+				"expected_result": map[string]any{"type": "string"},
+			},
+			"required": []string{"description"},
+		}),
 	),
 )
 
@@ -147,10 +157,14 @@ func CreateTestCaseHandleFunc(ctx context.Context, request mcp.CallToolRequest, 
 	if _, err := requiredInt(arguments, "module_id"); err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
 	}
-	payload := map[string]any{"program_id": programID}
+	caseSteps, err := utils.NormalizeCaseSteps(arguments["case_steps"])
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	payload := map[string]any{"program_id": programID, "case_steps": caseSteps}
 	for _, key := range []string{
 		"title", "precondition", "case_type", "priority", "maintainer_id",
-		"remark", "attachment_ids", "case_steps", "module_id",
+		"remark", "attachment_ids", "module_id",
 	} {
 		if value, ok := arguments[key]; ok && value != nil {
 			payload[key] = value
@@ -215,7 +229,10 @@ func changeArchiveState(ctx context.Context, request mcp.CallToolRequest, opts [
 		fmt.Sprintf("/%d/test_cases/%d/%s", enterpriseID, testCaseID, action),
 		opts...,
 	)
-	return client.HandleMCPResultContext(ctx, nil)
+	if result, err := client.HandleMCPResultContext(ctx, nil); result != nil && result.IsError {
+		return result, err
+	}
+	return utils.MCPActionResult(map[string]any{"test_case_id": testCaseID, "archived": action == "archive"})
 }
 
 func parseScope(request mcp.CallToolRequest) (map[string]any, int, int, error) {
@@ -271,5 +288,8 @@ func DeleteTestCaseHandleFunc(ctx context.Context, request mcp.CallToolRequest, 
 	}
 	opts = append(opts, utils.WithQuery(map[string]interface{}{"program_id": programID}))
 	client := utils.NewGiteeClient("DELETE", fmt.Sprintf("/%d/test_cases/%d", enterpriseID, testCaseID), opts...)
-	return client.HandleMCPResultContext(ctx, nil)
+	if result, err := client.HandleMCPResultContext(ctx, nil); result != nil && result.IsError {
+		return result, err
+	}
+	return utils.MCPActionResult(map[string]any{"test_case_id": testCaseID, "deleted": true})
 }

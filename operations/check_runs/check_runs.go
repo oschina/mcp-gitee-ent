@@ -63,8 +63,7 @@ func ListPRCheckRunsHandleFunc(ctx context.Context, request mcp.CallToolRequest,
 	}
 	opts = append(opts, utils.WithQuery(query))
 	client := utils.NewGiteeClient("GET", fmt.Sprintf("/%d/pr_check_runs", enterpriseID), opts...)
-	var data any
-	return client.HandleMCPResultContext(ctx, &data)
+	return handleCheckRunList(ctx, client)
 }
 
 func ListCommitCheckRunsHandleFunc(ctx context.Context, request mcp.CallToolRequest, opts ...utils.Option) (*mcp.CallToolResult, error) {
@@ -84,8 +83,7 @@ func ListCommitCheckRunsHandleFunc(ctx context.Context, request mcp.CallToolRequ
 	}
 	opts = append(opts, utils.WithQuery(query))
 	client := utils.NewGiteeClient("GET", fmt.Sprintf("/%d/commit_check_runs", enterpriseID), opts...)
-	var data any
-	return client.HandleMCPResultContext(ctx, &data)
+	return handleCheckRunList(ctx, client)
 }
 
 func ListProjectCheckRunsHandleFunc(ctx context.Context, request mcp.CallToolRequest, opts ...utils.Option) (*mcp.CallToolResult, error) {
@@ -160,4 +158,16 @@ func requiredInt(arguments map[string]any, key string) (int, error) {
 		return 0, fmt.Errorf("Missing required parameter: %s", key)
 	}
 	return utils.SafelyConvertToInt(value)
+}
+
+func handleCheckRunList(ctx context.Context, client *utils.GiteeClient) (*mcp.CallToolResult, error) {
+	var payload map[string]any
+	result, err := client.HandleMCPResultContext(ctx, &payload)
+	if result != nil && result.IsError {
+		return result, err
+	}
+	if len(payload) == 0 {
+		return utils.MCPJSONResult(map[string]any{"data": []any{}, "total_count": 0})
+	}
+	return utils.MCPJSONResult(payload)
 }

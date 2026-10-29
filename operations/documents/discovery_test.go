@@ -80,3 +80,48 @@ func TestSearchDocumentsRequiresSearch(t *testing.T) {
 		t.Fatalf("result = %#v, want error", result)
 	}
 }
+
+func TestGetDocumentNodeRenamesLinkedIssues(t *testing.T) {
+	withDiscoveryTestServer(t, func(w http.ResponseWriter, request *http.Request) {
+		if request.URL.Path != "/7/doc_nodes/5" {
+			t.Errorf("path = %q", request.URL.Path)
+		}
+		_, _ = io.WriteString(w, `{"id":5,"file_type":"WikiInfo","linked_issues_count":[{"id":31},{"id":32}]}`)
+	})
+
+	result := callDiscovery(t, GetDocumentNodeHandleFunc, map[string]any{"enterprise_id": 7, "doc_node_id": 5})
+	if result.IsError {
+		t.Fatalf("result is error: %#v", result.Content)
+	}
+	var decoded map[string]any
+	toolResultJSON(t, result, &decoded)
+	if _, ok := decoded["linked_issues_count"]; ok {
+		t.Fatalf("linked_issues_count must be renamed: %v", decoded)
+	}
+	issues, ok := decoded["linked_issues"].([]any)
+	if !ok || len(issues) != 2 {
+		t.Fatalf("linked_issues = %#v", decoded["linked_issues"])
+	}
+	if total, ok := decoded["linked_issues_total"].(float64); !ok || int(total) != 2 {
+		t.Fatalf("linked_issues_total = %#v", decoded["linked_issues_total"])
+	}
+}
+
+func TestGetDocumentNodeWithoutLinkedIssueField(t *testing.T) {
+	withDiscoveryTestServer(t, func(w http.ResponseWriter, request *http.Request) {
+		_, _ = io.WriteString(w, `{"id":5,"file_type":"AttachFile"}`)
+	})
+
+	result := callDiscovery(t, GetDocumentNodeHandleFunc, map[string]any{"enterprise_id": 7, "doc_node_id": 5})
+	if result.IsError {
+		t.Fatalf("result is error: %#v", result.Content)
+	}
+	var decoded map[string]any
+	toolResultJSON(t, result, &decoded)
+	if _, ok := decoded["linked_issues"]; ok {
+		t.Fatalf("linked_issues must not be invented: %v", decoded)
+	}
+	if fileType, _ := decoded["file_type"].(string); fileType != "AttachFile" {
+		t.Fatalf("file_type = %#v", decoded["file_type"])
+	}
+}

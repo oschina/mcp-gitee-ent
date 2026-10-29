@@ -13,7 +13,7 @@ import (
 
 var ListDocumentsTool = mcp.NewTool(
 	ListDocuments,
-	mcp.WithDescription("List knowledge-base documents accessible to the authenticated user in a Gitee enterprise. Use the returned document_id with document page, upload, download, and update tools. A listed document may still be read-only. This does not list repository Wikis or uploaded attachments. With search set, the tool returns page-level keyword hits (each hit carries its document_id and page_id) instead of the flat document list, and program_id, created_by_me, direction, and per_page are not supported."),
+	mcp.WithDescription("List knowledge-base documents accessible to the authenticated user in a Gitee enterprise. Use the returned document_id with document page, upload, download, and update tools. Each item also carries document_node_id, the document node ID to pass as doc_node_id to link_issue_document, unlink_issue_document, and get_document_node; document_id is a different identifier and those tools reject it. A listed document may still be read-only. This does not list repository Wikis or uploaded attachments. With search set, the tool returns page-level keyword hits instead of the flat document list; each hit carries document_node_id and page_id, and program_id, created_by_me, direction, and per_page are not supported."),
 	mcp.WithReadOnlyHintAnnotation(true),
 	mcp.WithDestructiveHintAnnotation(false),
 	mcp.WithIdempotentHintAnnotation(true),

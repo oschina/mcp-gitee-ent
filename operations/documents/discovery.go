@@ -18,7 +18,11 @@ const (
 )
 
 var SearchDocumentsTool = mcp.NewTool(SearchDocuments,
-	mcp.WithDescription("Search documents and knowledge-base nodes in an enterprise. Supports optional project or parent-folder filtering."),
+	mcp.WithDescription("Search documents and knowledge-base nodes in an enterprise. Supports optional project or parent-folder filtering. "+
+		"Each hit exposes three different IDs: doc_id is the document node ID (the same value as document_node_id in "+
+		"list_enterprise_documents, and the doc_node_id accepted by link_issue_document, unlink_issue_document, and "+
+		"get_document_node), info_id is the document/file ID (document_id), and id is the page ID. "+
+		"Use doc_id when the next step links an issue to the document; use info_id with document page, upload, download, and update tools."),
 	mcp.WithNumber("enterprise_id", mcp.Description("Enterprise ID"), mcp.Required()),
 	mcp.WithString("search", mcp.Description("Search keyword."), mcp.Required()),
 	mcp.WithNumber("program_id", mcp.Description("Optional project ID.")),
@@ -51,9 +55,12 @@ var ListSharedDocumentsTool = mcp.NewTool(ListSharedDocuments,
 )
 
 var GetDocumentNodeTool = mcp.NewTool(GetDocumentNode,
-	mcp.WithDescription("Get one document or knowledge-base node by ID."),
+	mcp.WithDescription("Get one document or knowledge-base node by ID. Use it to confirm that a node is a document or attachment "+
+		"(file_type WikiInfo or AttachFile) before linking it to an issue; folders and other node types cannot be linked. "+
+		"The response lists the work items already linked to the document in linked_issues (an array of issue objects, "+
+		"with linked_issues_total for the count); linked_issues is empty when the document is not linked to any work item."),
 	mcp.WithNumber("enterprise_id", mcp.Description("Enterprise ID"), mcp.Required()),
-	mcp.WithNumber("doc_node_id", mcp.Description("Document node ID."), mcp.Required()),
+	mcp.WithNumber("doc_node_id", mcp.Description("Document node ID: the same value as document_node_id in list_enterprise_documents, doc_id in search_documents, and id in get_issue_development_links(type='docs'). Not document_id or page_id."), mcp.Required()),
 	mcp.WithReadOnlyHintAnnotation(true),
 )
 
@@ -131,8 +138,26 @@ func GetDocumentNodeHandleFunc(ctx context.Context, request mcp.CallToolRequest,
 		return mcp.NewToolResultError(err.Error()), nil
 	}
 	client := utils.NewGiteeClient("GET", fmt.Sprintf("/%d/doc_nodes/%d", enterpriseID, nodeID), opts...)
-	var data any
-	return client.HandleMCPResultContext(ctx, &data)
+	var payload map[string]any
+	if result, err := client.HandleMCPResultContext(ctx, &payload); result != nil && result.IsError {
+		return result, err
+	}
+	renameLinkedIssues(payload)
+	return utils.MCPJSONResult(payload)
+}
+
+// renameLinkedIssues repairs the upstream doc node detail payload, whose
+// linked_issues_count field actually carries the list of linked issues.
+func renameLinkedIssues(payload map[string]any) {
+	issues, ok := payload["linked_issues_count"]
+	if !ok {
+		return
+	}
+	delete(payload, "linked_issues_count")
+	payload["linked_issues"] = issues
+	if list, ok := issues.([]any); ok {
+		payload["linked_issues_total"] = len(list)
+	}
 }
 
 func ListDocumentVersionsHandleFunc(ctx context.Context, request mcp.CallToolRequest, opts ...utils.Option) (*mcp.CallToolResult, error) {

@@ -2,7 +2,9 @@ package issue_links
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"strconv"
 
 	"gitee.com/oschina/mcp-gitee-ent/utils"
 
@@ -16,7 +18,9 @@ const (
 )
 
 var ListIssueAttachmentsTool = mcp.NewTool(ListIssueAttachments,
-	mcp.WithDescription("List attachments of an issue with pagination."),
+	mcp.WithDescription("List files uploaded as attachments to an issue, with pagination. Returns issue attachment records, "+
+		"not knowledge-base documents: the attachment id in this result is not a doc_node_id and cannot be passed to "+
+		"link_issue_document. Use get_issue_development_links(type='docs') to list documents linked to the issue."),
 	mcp.WithNumber("enterprise_id", mcp.Description("Enterprise ID"), mcp.Required()),
 	mcp.WithString("issue_id", mcp.Description("Issue ID or issue ident."), mcp.Required()),
 	mcp.WithNumber("page", mcp.Description("Page number, starting at 1."), mcp.Min(1)),
@@ -52,15 +56,54 @@ func ListIssueAttachmentsHandleFunc(ctx context.Context, request mcp.CallToolReq
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
 	}
-	query := issueQuery(arguments, issueID, []string{"page", "per_page"})
+	// The attachment endpoints resolve issue_id by numeric ID only and ignore qt=ident,
+	// so an issue ident must be resolved to its numeric ID first.
+	numericIssueID, err := resolveNumericIssueID(ctx, enterpriseID, issueID)
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	query := map[string]interface{}{}
+	for _, key := range []string{"page", "per_page"} {
+		if value, ok := arguments[key]; ok {
+			query[key] = value
+		}
+	}
 	opts = append(opts, utils.WithQuery(query))
 	client := utils.NewGiteeClient(
 		"GET",
-		fmt.Sprintf("/%d/issues/%s/paged_attach_files", enterpriseID, issueID),
+		fmt.Sprintf("/%d/issues/%s/paged_attach_files", enterpriseID, numericIssueID),
 		opts...,
 	)
 	var data any
 	return client.HandleMCPResultContext(ctx, &data)
+}
+
+func resolveNumericIssueID(ctx context.Context, enterpriseID int, issueID string) (string, error) {
+	if utils.IsAllDigits(issueID) {
+		return issueID, nil
+	}
+	client := utils.NewGiteeClient(
+		"GET",
+		fmt.Sprintf("/%d/issues/%s", enterpriseID, issueID),
+		utils.WithQuery(map[string]interface{}{"qt": "ident"}),
+	)
+	if _, err := client.DoContext(ctx); err != nil {
+		return "", err
+	}
+	body, err := client.GetRespBody()
+	if err != nil {
+		return "", err
+	}
+	var detail struct {
+		ID int `json:"id"`
+	}
+	if err := json.Unmarshal(body, &detail); err != nil {
+		return "", fmt.Errorf("could not resolve issue ident %q: %w", issueID, err)
+	}
+	if detail.ID <= 0 {
+		return "", fmt.Errorf("could not resolve issue ident %q to a numeric issue ID", issueID)
+	}
+	return strconv.Itoa(detail.ID), nil
 }
 
 func ListIssueRelatedIssuesHandleFunc(ctx context.Context, request mcp.CallToolRequest, opts ...utils.Option) (*mcp.CallToolResult, error) {

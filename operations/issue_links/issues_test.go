@@ -290,18 +290,34 @@ func TestLinkIssuePullRequestRequiresPullRequestID(t *testing.T) {
 }
 
 func TestListIssueAttachments(t *testing.T) {
+	var detailCalls, attachmentCalls int
 	withTestServer(t, func(w http.ResponseWriter, request *http.Request) {
-		if request.URL.Path != "/7/issues/I123/paged_attach_files" {
-			t.Errorf("path = %q", request.URL.Path)
+		switch request.URL.Path {
+		case "/7/issues/I123":
+			detailCalls++
+			if request.URL.Query().Get("qt") != "ident" {
+				t.Errorf("qt = %q, want ident", request.URL.Query().Get("qt"))
+			}
+			_, _ = io.WriteString(w, `{"id":42,"ident":"I123"}`)
+		case "/7/issues/42/paged_attach_files":
+			attachmentCalls++
+			if _, ok := request.URL.Query()["qt"]; ok {
+				t.Errorf("attachment request must not send qt: %v", request.URL.Query())
+			}
+			if request.URL.Query().Get("page") != "2" {
+				t.Errorf("page = %q, want 2", request.URL.Query().Get("page"))
+			}
+			_, _ = io.WriteString(w, `{"data":[],"total_count":0}`)
+		default:
+			t.Errorf("unexpected path %s", request.URL.Path)
 		}
-		if request.URL.Query().Get("qt") != "ident" || request.URL.Query().Get("page") != "2" {
-			t.Errorf("query = %v", request.URL.Query())
-		}
-		_, _ = io.WriteString(w, `{"data":[],"total_count":0}`)
 	})
 	result := call(t, ListIssueAttachmentsHandleFunc, map[string]any{"enterprise_id": 7, "issue_id": "I123", "page": 2})
 	if result.IsError {
 		t.Fatalf("result is error: %#v", result.Content)
+	}
+	if detailCalls != 1 || attachmentCalls != 1 {
+		t.Fatalf("detailCalls = %d, attachmentCalls = %d, want 1/1", detailCalls, attachmentCalls)
 	}
 }
 
@@ -370,6 +386,10 @@ func TestIssueCollaborationWrites(t *testing.T) {
 			if request.Method != http.MethodPost && request.Method != http.MethodDelete {
 				t.Errorf("doc link method = %s", request.Method)
 			}
+		case "/7/issues/12/link_doc_nodes":
+			if request.Method != http.MethodGet || request.URL.Query().Get("linked") != "true" {
+				t.Errorf("linked docs = %s %v", request.Method, request.URL.Query())
+			}
 		case "/7/issues/12/test_plan_cases":
 			if request.Method != http.MethodPost && request.Method != http.MethodDelete {
 				t.Errorf("test case link method = %s", request.Method)
@@ -404,5 +424,74 @@ func TestIssueCollaborationWrites(t *testing.T) {
 		if result.IsError {
 			t.Fatalf("handler result is error: %#v", result.Content)
 		}
+	}
+}
+
+func TestListIssueAttachmentsKeepsNumericID(t *testing.T) {
+	withTestServer(t, func(w http.ResponseWriter, request *http.Request) {
+		if request.URL.Path != "/7/issues/42/paged_attach_files" {
+			t.Errorf("path = %q, want /7/issues/42/paged_attach_files", request.URL.Path)
+		}
+		_, _ = io.WriteString(w, `{"total_count":0,"data":[]}`)
+	})
+
+	result := call(t, ListIssueAttachmentsHandleFunc, map[string]any{"enterprise_id": 7, "issue_id": 42})
+	if result.IsError {
+		t.Fatalf("result is error: %#v", result.Content)
+	}
+}
+
+func TestUnlinkIssueDocumentReturnsRemainingLinks(t *testing.T) {
+	var deleteCalls, listCalls int
+	withTestServer(t, func(w http.ResponseWriter, request *http.Request) {
+		switch request.URL.Path {
+		case "/7/issues/I123/link_doc_nodes/5":
+			deleteCalls++
+			if request.Method != http.MethodDelete {
+				t.Errorf("method = %s, want DELETE", request.Method)
+			}
+			if request.URL.Query().Get("qt") != "ident" {
+				t.Errorf("qt = %q, want ident", request.URL.Query().Get("qt"))
+			}
+			w.WriteHeader(http.StatusNoContent)
+		case "/7/issues/I123/link_doc_nodes":
+			listCalls++
+			if request.Method != http.MethodGet {
+				t.Errorf("method = %s, want GET", request.Method)
+			}
+			if request.URL.Query().Get("linked") != "true" || request.URL.Query().Get("qt") != "ident" {
+				t.Errorf("query = %v", request.URL.Query())
+			}
+			_, _ = io.WriteString(w, `{"total_count":1,"data":[{"id":9,"name":"keep"}]}`)
+		default:
+			t.Errorf("unexpected path %s", request.URL.Path)
+		}
+	})
+
+	result := call(t, UnlinkIssueDocumentHandleFunc, map[string]any{"enterprise_id": 7, "issue_id": "I123", "doc_node_id": 5})
+	if result.IsError {
+		t.Fatalf("result is error: %#v", result.Content)
+	}
+	var payload struct {
+		DocNodeID            int  `json:"doc_node_id"`
+		IsLinked             bool `json:"is_linked"`
+		LinkedDocumentsTotal int  `json:"linked_documents_total"`
+		LinkedDocuments      []struct {
+			ID int `json:"id"`
+		} `json:"linked_documents"`
+	}
+	content, ok := result.Content[0].(mcp.TextContent)
+	if !ok {
+		t.Fatalf("content type = %T", result.Content[0])
+	}
+	if err := json.Unmarshal([]byte(content.Text), &payload); err != nil {
+		t.Fatalf("decode %q: %v", content.Text, err)
+	}
+	if payload.DocNodeID != 5 || payload.IsLinked || payload.LinkedDocumentsTotal != 1 ||
+		len(payload.LinkedDocuments) != 1 || payload.LinkedDocuments[0].ID != 9 {
+		t.Fatalf("payload = %#v", payload)
+	}
+	if deleteCalls != 1 || listCalls != 1 {
+		t.Fatalf("deleteCalls = %d, listCalls = %d, want 1/1", deleteCalls, listCalls)
 	}
 }

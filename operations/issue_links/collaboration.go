@@ -68,18 +68,41 @@ var RemoveIssueRelationTool = mcp.NewTool(RemoveIssueRelation,
 	mcp.WithNumber("link_issue_id", mcp.Description("Linked issue ID."), mcp.Required()),
 )
 
+const docNodeIDDescription = "Document node ID (doc_nodes.id). The same value appears as document_node_id in " +
+	"list_enterprise_documents, doc_id in search_documents, and id in get_issue_development_links(type='docs'). " +
+	"Never pass document_id, info_id, or page_id."
+
 var LinkIssueDocumentTool = mcp.NewTool(LinkIssueDocument,
-	mcp.WithDescription("Link a document node to an issue."),
-	mcp.WithNumber("enterprise_id", mcp.Description("Enterprise ID"), mcp.Required()),
-	mcp.WithString("issue_id", mcp.Description("Issue ID or issue ident."), mcp.Required()),
-	mcp.WithNumber("doc_node_id", mcp.Description("Document node ID."), mcp.Required()),
+	mcp.WithDescription("Attach an existing knowledge-base document or attachment (a document node) to a work item. "+
+		"doc_node_id is a document NODE id: use list_enterprise_documents' document_node_id, search_documents' doc_id, "+
+		"or get_issue_development_links(type='docs').data[].id - these three fields carry the same value. "+
+		"Passing document_id, info_id, or page_id fails with 404 'node not found'. "+
+		"Only document (WikiInfo) and attachment (AttachFile) nodes can be linked; folders fail with 400. "+
+		"Linking is not idempotent: linking an already-linked node fails with a generic 400, so read "+
+		"get_issue_development_links(type='docs') before linking. This does not create or upload documents; "+
+		"use create_enterprise_document or upload_enterprise_document_files first."),
+	mcp.WithReadOnlyHintAnnotation(false),
+	mcp.WithDestructiveHintAnnotation(false),
+	mcp.WithIdempotentHintAnnotation(false),
+	mcp.WithNumber("enterprise_id", mcp.Description("Enterprise ID returned by list_enterprises."), mcp.Required(), mcp.Min(1)),
+	mcp.WithString("issue_id", mcp.Description("Issue ID or issue ident, for example 9370067 or I5KTZN."), mcp.Required()),
+	mcp.WithNumber("doc_node_id", mcp.Description(docNodeIDDescription), mcp.Required(), mcp.Min(1)),
 )
 
 var UnlinkIssueDocumentTool = mcp.NewTool(UnlinkIssueDocument,
-	mcp.WithDescription("Unlink a document node from an issue."),
-	mcp.WithNumber("enterprise_id", mcp.Description("Enterprise ID"), mcp.Required()),
-	mcp.WithString("issue_id", mcp.Description("Issue ID or issue ident."), mcp.Required()),
-	mcp.WithNumber("doc_node_id", mcp.Description("Document node ID."), mcp.Required()),
+	mcp.WithDescription("Detach a knowledge-base document or attachment from a work item. "+
+		"Pass the same document NODE id that was linked: read the current links with "+
+		"get_issue_development_links(type='docs') and use each item's id. "+
+		"Unlinking is idempotent: a node that is not linked still succeeds. "+
+		"The response returns is_linked for the target node plus the issue's remaining linked_documents and "+
+		"linked_documents_total, so the new state is confirmed without a follow-up read. "+
+		"It only removes the association; the document itself is not deleted."),
+	mcp.WithReadOnlyHintAnnotation(false),
+	mcp.WithDestructiveHintAnnotation(false),
+	mcp.WithIdempotentHintAnnotation(true),
+	mcp.WithNumber("enterprise_id", mcp.Description("Enterprise ID returned by list_enterprises."), mcp.Required(), mcp.Min(1)),
+	mcp.WithString("issue_id", mcp.Description("Issue ID or issue ident, for example 9370067 or I5KTZN."), mcp.Required()),
+	mcp.WithNumber("doc_node_id", mcp.Description(docNodeIDDescription), mcp.Required(), mcp.Min(1)),
 )
 
 var LinkIssueTestCasesTool = mcp.NewTool(LinkIssueTestCases,
@@ -215,13 +238,54 @@ func changeIssueDocument(ctx context.Context, request mcp.CallToolRequest, opts 
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
 	}
-	opts = appendQueryOpt(opts, issueID)
-	client := utils.NewGiteeClient(method, fmt.Sprintf("/%d/issues/%s/link_doc_nodes/%d", enterpriseID, issueID, docNodeID), opts...)
-	if method == "DELETE" {
-		return client.HandleMCPResultContext(ctx, nil)
+	client := utils.NewGiteeClient(
+		method,
+		fmt.Sprintf("/%d/issues/%s/link_doc_nodes/%d", enterpriseID, issueID, docNodeID),
+		appendQueryOpt(opts, issueID)...,
+	)
+	if method != "DELETE" {
+		var data any
+		return client.HandleMCPResultContext(ctx, &data)
 	}
-	var data any
-	return client.HandleMCPResultContext(ctx, &data)
+	if result, err := client.HandleMCPResultContext(ctx, nil); result != nil && result.IsError {
+		return result, err
+	}
+	return unlinkIssueDocumentResult(ctx, enterpriseID, issueID, docNodeID, opts)
+}
+
+func unlinkIssueDocumentResult(ctx context.Context, enterpriseID int, issueID string, docNodeID int, opts []utils.Option) (*mcp.CallToolResult, error) {
+	query := issueQuery(nil, issueID, nil)
+	query["linked"] = true
+	query["per_page"] = 100
+	client := utils.NewGiteeClient(
+		"GET",
+		fmt.Sprintf("/%d/issues/%s/link_doc_nodes", enterpriseID, issueID),
+		append(append([]utils.Option{}, opts...), utils.WithQuery(query))...,
+	)
+	var payload struct {
+		TotalCount int   `json:"total_count"`
+		Data       []any `json:"data"`
+	}
+	if result, err := client.HandleMCPResultContext(ctx, &payload); result != nil && result.IsError {
+		return result, err
+	}
+	isLinked := false
+	for _, item := range payload.Data {
+		document, ok := item.(map[string]any)
+		if !ok {
+			continue
+		}
+		if id, ok := document["id"].(float64); ok && int(id) == docNodeID {
+			isLinked = true
+			break
+		}
+	}
+	return utils.MCPJSONResult(map[string]any{
+		"doc_node_id":            docNodeID,
+		"is_linked":              isLinked,
+		"linked_documents":       payload.Data,
+		"linked_documents_total": payload.TotalCount,
+	})
 }
 
 func LinkIssueTestCasesHandleFunc(ctx context.Context, request mcp.CallToolRequest, opts ...utils.Option) (*mcp.CallToolResult, error) {

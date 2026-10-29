@@ -146,8 +146,13 @@ const (
 )
 
 var GetIssueDevelopmentLinksTool = mcp.NewTool(GetIssueDevelopmentLinks,
-	mcp.WithDescription("Get one category of development links for an issue: related PRs, branches, commits, tests, docs, or linked work items. "+
-		"Not for PR diffs, file contents, or issue hierarchy."),
+	mcp.WithDescription("Get one category of development links for an issue: related PRs (pull_requests), branches, commits, "+
+		"tests (test_cases), documents (docs), or linked work items (issues, children, parent, overview). "+
+		"For type='docs' this returns the documents and attachments currently linked to the issue. Each item's "+
+		"`id` is the document node ID: it is the same value as document_node_id in list_enterprise_documents and "+
+		"doc_id in search_documents, and it is what link_issue_document, unlink_issue_document, and get_document_node "+
+		"accept as doc_node_id. Use it before linking (to avoid duplicate links) and after linking or unlinking "+
+		"to verify the result. Not for PR diffs, file contents, or document page content."),
 	mcp.WithNumber("enterprise_id", mcp.Description("Enterprise ID"), mcp.Required()),
 	mcp.WithString("issue_id", mcp.Description("Issue ID or issue ident."), mcp.Required()),
 	mcp.WithString("type",

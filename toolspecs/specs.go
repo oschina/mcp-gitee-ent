@@ -1,6 +1,8 @@
 package toolspecs
 
 import (
+	"fmt"
+
 	"gitee.com/oschina/mcp-gitee-ent/catalog"
 	"gitee.com/oschina/mcp-gitee-ent/operations/baselines"
 	"gitee.com/oschina/mcp-gitee-ent/operations/check_runs"
@@ -524,7 +526,7 @@ func testToolSpecs() []catalog.Spec {
 			map[string]any{"enterprise_id": 123, "program_id": 456, "test_plan_id": 789, "test_plan_case_ids": []any{2001}, "execute_state": 1}),
 		testSpec(test_reports.CreateTestReportTool, test_reports.CreateTestReportHandleFunc, "test_reports", catalog.RiskWrite,
 			[]string{"测试报告", "创建测试报告", "新建测试报告", "test report", "create test report"},
-			"Create a test report from existing test plans.", map[string]any{"enterprise_id": 123, "program_id": 456, "title": "Release report", "test_plan_ids": []any{789}}),
+			"Create a test report from existing test plans.", map[string]any{"enterprise_id": 123, "program_id": 456, "title": "Release report", "test_plan_ids": []any{789}, "components": []any{map[string]any{"ident": "basic-info", "title": "Basic info"}, map[string]any{"ident": "case-statistics", "title": "Case statistics"}}}),
 		testSpec(test_reports.ListTestReportsTool, test_reports.ListTestReportsHandleFunc, "test_reports", catalog.RiskRead,
 			[]string{"测试报告列表", "报告列表", "test report list", "list test reports"},
 			"List test reports in a project.", map[string]any{"enterprise_id": 123, "program_id": 456}),
@@ -732,6 +734,11 @@ func All() []catalog.Spec {
 func Build(toolAllowed func(string) bool) (*catalog.Registry, error) {
 	specs := All()
 	for i := range specs {
+		canonical, err := canonicalizeSpec(specs[i])
+		if err != nil {
+			return nil, fmt.Errorf("canonicalize %s: %w", specs[i].Tool.Name, err)
+		}
+		specs[i] = canonical
 		allowed := true
 		if toolAllowed != nil {
 			allowed = toolAllowed(specs[i].Tool.Name)

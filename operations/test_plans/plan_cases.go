@@ -23,7 +23,7 @@ const (
 )
 
 var ListTestPlanCasesTool = mcp.NewTool(ListTestPlanCases,
-	mcp.WithDescription("List test cases in a test plan. Filter by execution result, executor, module, state, or linked issue."),
+	mcp.WithDescription("List test cases in a test plan. Filter by execution result, executor, module, state, or linked_issue_id."),
 	mcp.WithNumber("enterprise_id", mcp.Description("Enterprise ID"), mcp.Required()),
 	mcp.WithNumber("program_id", mcp.Description("Project ID required by test management APIs."), mcp.Required()),
 	mcp.WithNumber("test_plan_id", mcp.Description("Test plan ID."), mcp.Required()),

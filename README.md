@@ -152,6 +152,41 @@ Toolset management supports two modes:
 Note:
 - If both `enabled-toolsets` and `disabled-toolsets` are specified, `enabled-toolsets` takes precedence
 - Tool names are case-sensitive
+- An explicit entry in `enabled-toolsets` wins over the same entry in `disabled-toolsets`
+
+## Progressive Tool Discovery
+
+The server exposes three discovery meta-tools so that a client can work with the full catalog without listing every tool up front:
+
+1. `search_tools(query, domain?, limit?)` finds candidate tool names by natural-language query. Results include the tool name, summary, domain, risk, and required argument names. `domain` narrows the search to one catalog domain, and `limit` defaults to 8 (maximum 20).
+2. `inspect_tool(name)` returns the full input schema, notes, and a valid example for one exact tool name. Inspect a search result before invoking it when argument names or formats are unclear.
+3. `invoke_tool(name, arguments)` executes one exact tool name with a JSON argument object. It cannot call itself recursively.
+
+Tool discovery is filtered by the same toolset configuration as direct tool registration. A tool that is disabled or hidden by `ENABLED_TOOLSETS` / `DISABLED_TOOLSETS` is rejected by both `inspect_tool` and `invoke_tool`, and it is not returned by `search_tools`. When a request carries its own tool filter, `inspect_tool` and `invoke_tool` reject tools outside that filter as well, and unknown-name suggestions only include tools available to the request.
+
+Search never fabricates results. If a query only matches ineligible tools (for example, a disabled domain), it still returns the regular no-match message and suggests broadening the keywords or removing the domain filter.
+
+The discovery meta-tools are infrastructure: `search_tools`, `inspect_tool`, and `invoke_tool` remain available when an `ENABLED_TOOLSETS` allowlist is set, even if they are not explicitly listed. They are hidden only when explicitly named in `DISABLED_TOOLSETS`, unless they are also explicitly named in `ENABLED_TOOLSETS`, in which case the enabled entry wins.
+
+### Canonical Parameter Names
+
+Tool arguments use unambiguous names; renamed legacy arguments are rejected with a migration hint.
+
+| Canonical | Replaces / meaning |
+|---|---|
+| `repository_id` | `project_id`; accepts a repository ID or repository path |
+| `repository_ids` | `project_ids`; repository IDs for filters or associations |
+| `program_id` | Gitee Program (项目) ID, not a repository |
+| `program_ids` | Multiple Gitee Program (项目) IDs |
+| `passed` | Boolean test-report state previously named `state` |
+| `state_id` | Numeric state previously named `state` |
+| `statuses` | Comma-separated program status filters previously named `status` |
+| `priorities` | Comma-separated priority filters previously named `priority` |
+| `assignee_ids` | Comma-separated assignee filters previously named `assignee_id` |
+| `linked_issue_id` | Numeric issue filter previously named `issue_id` |
+| `test_plan_ids` | Array of numeric test-plan IDs when listing reports |
+
+`pull_request_iid` is the repository-scoped display IID; `pull_request_id` is the internal database ID.
 
 ## Available Tools
 

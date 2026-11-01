@@ -24,7 +24,7 @@ var ListPRCheckRunsTool = mcp.NewTool(ListPRCheckRuns,
 )
 
 var ListCommitCheckRunsTool = mcp.NewTool(ListCommitCheckRuns,
-	mcp.WithDescription("List check runs for commits in one repository. Requires project_id."),
+	mcp.WithDescription("List check runs for commits in one repository. Requires repository_id."),
 	mcp.WithNumber("enterprise_id", mcp.Description("Enterprise ID"), mcp.Required()),
 	mcp.WithNumber("project_id", mcp.Description("Repository ID."), mcp.Required()),
 	mcp.WithNumber("pull_request_id", mcp.Description("Optional pull request ID.")),

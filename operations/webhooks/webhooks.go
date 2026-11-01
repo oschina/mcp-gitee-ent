@@ -18,7 +18,7 @@ const (
 
 var ListWebhooksTool = mcp.NewTool(ListWebhooks,
 	mcp.WithDescription("List webhooks by scope, program, or repository. scope defaults to all; "+
-		"the API rejects the call when scope, program_id, and project_id are all missing."),
+		"the API rejects the call when scope, program_id, and repository_id are all missing."),
 	mcp.WithNumber("enterprise_id", mcp.Description("Enterprise ID"), mcp.Required()),
 	mcp.WithString("scope", mcp.Description("Webhook scope."), mcp.Enum("all", "enterprise", "program", "project")),
 	mcp.WithNumber("program_id", mcp.Description("Optional project ID.")),

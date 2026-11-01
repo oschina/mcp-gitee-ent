@@ -88,7 +88,13 @@ func toolAllowed(name string) bool {
 
 // infrastructureToolAllowed keeps discovery tools available even when an
 // enabled-tools allowlist is configured, unless they are explicitly disabled.
+// An explicit enabled entry wins over a matching disabled entry.
 func infrastructureToolAllowed(name string) bool {
+	for _, candidate := range getEnabledToolsets() {
+		if strings.TrimSpace(candidate) == name {
+			return true
+		}
+	}
 	for _, candidate := range getDisabledToolsets() {
 		if strings.TrimSpace(candidate) == name {
 			return false

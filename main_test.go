@@ -15,6 +15,31 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 )
 
+func TestInfrastructureToolAllowedPrecedence(t *testing.T) {
+	testCases := []struct {
+		name     string
+		enabled  string
+		disabled string
+		want     bool
+	}{
+		{name: "explicit enabled wins over disabled", enabled: "search_tools", disabled: "search_tools", want: true},
+		{name: "allowlist alone does not hide meta tools", enabled: "list_enterprise_issues", want: true},
+		{name: "disabled hides meta tools", disabled: "search_tools", want: false},
+		{name: "default allows meta tools", want: true},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			resetToolsetFlags(t)
+			enabledToolsetsFlag = testCase.enabled
+			disabledToolsetsFlag = testCase.disabled
+			if got := infrastructureToolAllowed("search_tools"); got != testCase.want {
+				t.Fatalf("infrastructureToolAllowed(search_tools) = %t, want %t", got, testCase.want)
+			}
+		})
+	}
+}
+
 func TestDocumentToolsThroughMCPServer(t *testing.T) {
 	previousEnabledToolsetsFlag := enabledToolsetsFlag
 	previousDisabledToolsetsFlag := disabledToolsetsFlag

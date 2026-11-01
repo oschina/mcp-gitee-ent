@@ -18,6 +18,20 @@ func TestAllSpecs(t *testing.T) {
 	}
 }
 
+func TestCatalogExamplesIncludeRequiredArguments(t *testing.T) {
+	for _, spec := range All() {
+		if spec.ExampleArguments == nil {
+			continue
+		}
+		for _, required := range spec.Tool.InputSchema.Required {
+			value, ok := spec.ExampleArguments[required]
+			if !ok || value == nil {
+				t.Errorf("%s: example arguments missing required %q", spec.Tool.Name, required)
+			}
+		}
+	}
+}
+
 func TestBuildRespectsAllowlist(t *testing.T) {
 	registry, err := Build(func(name string) bool { return name == "list_enterprise_issues" })
 	if err != nil {

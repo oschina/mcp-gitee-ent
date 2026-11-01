@@ -72,7 +72,7 @@ var UpdateTestPlanTool = mcp.NewTool(UpdateTestPlan,
 )
 
 var UpdateTestPlanStateTool = mcp.NewTool(UpdateTestPlanState,
-	mcp.WithDescription("Change a test plan state: 0 not started, 1 in progress, 2 completed, 3 suspended. "+
+	mcp.WithDescription("Change a test plan state_id: 0 not started, 1 in progress, 2 completed, 3 suspended. "+
 		"Allowed transitions are constrained: 0 -> 1 or 3, 1 -> 2 or 3, 3 -> 0 or 1. "+
 		"Setting the state the plan already has is rejected by the API with 'illegal test plan state', "+
 		"so read the plan with get_test_plan first. Adding the first case to a plan moves it to 1 automatically."),

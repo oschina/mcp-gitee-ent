@@ -248,6 +248,144 @@ func TestInvokeToolHandlerSuggestsUnknownTool(t *testing.T) {
 	}
 }
 
+type fixedSearcher struct {
+	hits []Hit
+}
+
+func (s fixedSearcher) Search(context.Context, string, int) ([]Hit, error) {
+	return s.hits, nil
+}
+
+func TestSearchToolsHandlerBackfillsWhenSearcherCapsResults(t *testing.T) {
+	registry := catalog.NewRegistry()
+	err := registry.Register(
+		spec("list_test_reports", "List test reports.", "test_reports", true, "测试报告"),
+		spec("create_test_report", "Create a test report.", "test_reports", true, "测试报告"),
+		spec("list_enterprise_issues", "List enterprise work items.", "issues", true, "任务"),
+	)
+	if err != nil {
+		t.Fatalf("Register() error = %v", err)
+	}
+
+	// The injected searcher ignores the requested limit and only returns a
+	// candidate from another domain. Domain filtering would starve the result
+	// set without a lexical backfill over the registry.
+	handler := NewSearchToolsHandler(registry, fixedSearcher{hits: []Hit{{Name: "list_enterprise_issues"}}})
+	request := mcp.CallToolRequest{}
+	request.Params.Arguments = map[string]any{"query": "测试报告", "domain": "test_reports", "limit": 5}
+	result, err := handler.Handle(context.Background(), request)
+	if err != nil {
+		t.Fatalf("Handle() error = %v", err)
+	}
+	text := resultText(t, result)
+	for _, expected := range []string{"list_test_reports", "create_test_report"} {
+		if !strings.Contains(text, expected) {
+			t.Fatalf("search output %q does not contain %q", text, expected)
+		}
+	}
+	if strings.Contains(text, "No tools matched") {
+		t.Fatalf("search output %q reported no match despite eligible backfill candidates", text)
+	}
+}
+
+func TestSearchToolsHandlerDedupesSearcherAndBackfill(t *testing.T) {
+	registry := catalog.NewRegistry()
+	if err := registry.Register(spec("list_test_reports", "List test reports.", "test_reports", true, "测试报告")); err != nil {
+		t.Fatalf("Register() error = %v", err)
+	}
+
+	handler := NewSearchToolsHandler(registry, fixedSearcher{hits: []Hit{
+		{Name: "list_test_reports"},
+		{Name: "list_test_reports"},
+	}})
+	request := mcp.CallToolRequest{}
+	request.Params.Arguments = map[string]any{"query": "测试报告"}
+	result, err := handler.Handle(context.Background(), request)
+	if err != nil {
+		t.Fatalf("Handle() error = %v", err)
+	}
+	if count := strings.Count(resultText(t, result), "list_test_reports"); count != 1 {
+		t.Fatalf("list_test_reports appears %d times, want 1 in %q", count, resultText(t, result))
+	}
+}
+
+func TestSearchToolsHandlerPreservesNoMatchWhenOnlyIneligibleToolsMatch(t *testing.T) {
+	handler := NewSearchToolsHandler(testRegistry(t), fixedSearcher{hits: []Hit{{Name: "admin_only_tool"}}})
+	request := mcp.CallToolRequest{}
+	request.Params.Arguments = map[string]any{"query": "admin"}
+	result, err := handler.Handle(context.Background(), request)
+	if err != nil {
+		t.Fatalf("Handle() error = %v", err)
+	}
+	text := resultText(t, result)
+	if !strings.Contains(text, "No tools matched") || strings.Contains(text, "admin_only_tool") {
+		t.Fatalf("result = %q, want no-match without ineligible tool", text)
+	}
+}
+
+func TestInspectToolHandlerRejectsFilteredTool(t *testing.T) {
+	registry := testRegistry(t)
+	filter := ToolFilterFunc(func(_ context.Context, spec catalog.Spec) bool {
+		return spec.Tool.Name != "list_milestones"
+	})
+	handler := NewInspectToolHandler(registry).WithFilter(filter)
+	request := mcp.CallToolRequest{}
+	request.Params.Arguments = map[string]any{"name": "list_milestones"}
+	result, err := handler.Handle(context.Background(), request)
+	if err != nil {
+		t.Fatalf("Handle() error = %v", err)
+	}
+	if !result.IsError || !strings.Contains(resultText(t, result), "not allowed") {
+		t.Fatalf("result = %#v, want not-allowed error", result)
+	}
+}
+
+func TestInspectToolHandlerRejectsNonInvokableTool(t *testing.T) {
+	handler := NewInspectToolHandler(testRegistry(t))
+	request := mcp.CallToolRequest{}
+	request.Params.Arguments = map[string]any{"name": "admin_only_tool"}
+	result, err := handler.Handle(context.Background(), request)
+	if err != nil {
+		t.Fatalf("Handle() error = %v", err)
+	}
+	if !result.IsError || !strings.Contains(resultText(t, result), "not enabled") {
+		t.Fatalf("result = %#v, want not-enabled error", result)
+	}
+}
+
+func TestUnknownToolSuggestionsRespectRequestFilter(t *testing.T) {
+	registry := testRegistry(t)
+	filter := ToolFilterFunc(func(_ context.Context, spec catalog.Spec) bool {
+		return spec.Tool.Name != "list_milestones"
+	})
+
+	t.Run("inspect", func(t *testing.T) {
+		handler := NewInspectToolHandler(registry).WithFilter(filter)
+		request := mcp.CallToolRequest{}
+		request.Params.Arguments = map[string]any{"name": "list_milestone"}
+		result, err := handler.Handle(context.Background(), request)
+		if err != nil {
+			t.Fatalf("Handle() error = %v", err)
+		}
+		if strings.Contains(resultText(t, result), "list_milestones") {
+			t.Fatalf("filtered tool appeared in inspect suggestion: %s", resultText(t, result))
+		}
+	})
+
+	t.Run("invoke", func(t *testing.T) {
+		handler := NewInvokeToolHandler(registry).WithFilter(filter)
+		request := mcp.CallToolRequest{}
+		request.Params.Arguments = map[string]any{"name": "list_milestone"}
+		result, err := handler.Handle(context.Background(), request)
+		if err != nil {
+			t.Fatalf("Handle() error = %v", err)
+		}
+		if strings.Contains(resultText(t, result), "list_milestones") {
+			t.Fatalf("filtered tool appeared in invoke suggestion: %s", resultText(t, result))
+		}
+	})
+}
+
 func TestSearchAndInvokeRespectRequestFilter(t *testing.T) {
 	registry := testRegistry(t)
 	filter := ToolFilterFunc(func(_ context.Context, spec catalog.Spec) bool {

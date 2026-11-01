@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"sort"
 	"strings"
 	"time"
 
@@ -151,6 +152,44 @@ func (h *SearchToolsHandler) WithFilter(filter ToolFilter) *SearchToolsHandler {
 	return h
 }
 
+func (h *SearchToolsHandler) eligible(ctx context.Context, spec catalog.Spec, domain string) bool {
+	if !spec.Invokable {
+		return false
+	}
+	if h.filter != nil && !h.filter.Allowed(ctx, spec) {
+		return false
+	}
+	return domain == "" || strings.EqualFold(spec.Domain, domain)
+}
+
+func (h *SearchToolsHandler) lexicalBackfill(ctx context.Context, query, domain string) []Hit {
+	normalizedQuery := normalizeText(strings.ToLower(strings.TrimSpace(query)))
+	if normalizedQuery == "" {
+		return nil
+	}
+	compactQuery := strings.ReplaceAll(normalizedQuery, " ", "")
+	tokens := strings.Fields(normalizedQuery)
+
+	hits := make([]Hit, 0)
+	for _, spec := range h.registry.List() {
+		if !h.eligible(ctx, spec, domain) {
+			continue
+		}
+		score := scoreSpec(spec, normalizedQuery, compactQuery, tokens)
+		if score < scoreAliasContains {
+			continue
+		}
+		hits = append(hits, Hit{Name: spec.Tool.Name, Score: score, Source: "lexical"})
+	}
+	sort.SliceStable(hits, func(i, j int) bool {
+		if hits[i].Score == hits[j].Score {
+			return hits[i].Name < hits[j].Name
+		}
+		return hits[i].Score > hits[j].Score
+	})
+	return hits
+}
+
 // Handle implements utils.OptionHandlerFunc.
 func (h *SearchToolsHandler) Handle(ctx context.Context, request mcp.CallToolRequest, _ ...utils.Option) (*mcp.CallToolResult, error) {
 	arguments, err := utils.ConvertArgumentsToMap(request.Params.Arguments)
@@ -177,25 +216,24 @@ func (h *SearchToolsHandler) Handle(ctx context.Context, request mcp.CallToolReq
 
 	seen := make(map[string]bool)
 	selected := make([]catalog.Spec, 0, limit)
-	for _, hit := range hits {
-		if len(selected) >= limit {
-			break
+	appendCandidate := func(name string) {
+		if len(selected) >= limit || seen[name] {
+			return
 		}
-		if seen[hit.Name] {
-			continue
+		spec, ok := h.registry.Get(name)
+		if !ok || !h.eligible(ctx, spec, domain) {
+			return
 		}
-		spec, ok := h.registry.Get(hit.Name)
-		if !ok || !spec.Invokable {
-			continue
-		}
-		if h.filter != nil && !h.filter.Allowed(ctx, spec) {
-			continue
-		}
-		if domain != "" && !strings.EqualFold(spec.Domain, domain) {
-			continue
-		}
-		seen[hit.Name] = true
+		seen[name] = true
 		selected = append(selected, spec)
+	}
+	for _, hit := range hits {
+		appendCandidate(hit.Name)
+	}
+	if len(selected) == 0 {
+		for _, hit := range h.lexicalBackfill(ctx, query, domain) {
+			appendCandidate(hit.Name)
+		}
 	}
 
 	if len(selected) == 0 {
@@ -226,11 +264,17 @@ func (h *SearchToolsHandler) Handle(ctx context.Context, request mcp.CallToolReq
 // InspectToolHandler handles inspect_tool.
 type InspectToolHandler struct {
 	registry *catalog.Registry
+	filter   ToolFilter
 }
 
 // NewInspectToolHandler creates an inspect handler.
 func NewInspectToolHandler(registry *catalog.Registry) *InspectToolHandler {
 	return &InspectToolHandler{registry: registry}
+}
+
+func (h *InspectToolHandler) WithFilter(filter ToolFilter) *InspectToolHandler {
+	h.filter = filter
+	return h
 }
 
 type inspectResponse struct {
@@ -247,7 +291,7 @@ type inspectResponse struct {
 }
 
 // Handle implements utils.OptionHandlerFunc.
-func (h *InspectToolHandler) Handle(_ context.Context, request mcp.CallToolRequest, _ ...utils.Option) (*mcp.CallToolResult, error) {
+func (h *InspectToolHandler) Handle(ctx context.Context, request mcp.CallToolRequest, _ ...utils.Option) (*mcp.CallToolResult, error) {
 	arguments, err := utils.ConvertArgumentsToMap(request.Params.Arguments)
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
@@ -258,7 +302,13 @@ func (h *InspectToolHandler) Handle(_ context.Context, request mcp.CallToolReque
 	}
 	spec, ok := h.registry.Get(name)
 	if !ok {
-		return mcp.NewToolResultError(unknownToolMessage(h.registry, name)), nil
+		return mcp.NewToolResultError(unknownToolMessage(ctx, h.registry, name, h.filter)), nil
+	}
+	if !spec.Invokable {
+		return mcp.NewToolResultError(toolNotEnabledMessage(name)), nil
+	}
+	if h.filter != nil && !h.filter.Allowed(ctx, spec) {
+		return mcp.NewToolResultError(toolNotAllowedMessage(name)), nil
 	}
 
 	response := inspectResponse{
@@ -312,15 +362,13 @@ func (h *InvokeToolHandler) Handle(ctx context.Context, request mcp.CallToolRequ
 
 	spec, ok := h.registry.Get(name)
 	if !ok {
-		return mcp.NewToolResultError(unknownToolMessage(h.registry, name)), nil
+		return mcp.NewToolResultError(unknownToolMessage(ctx, h.registry, name, h.filter)), nil
 	}
 	if !spec.Invokable {
-		return mcp.NewToolResultError(fmt.Sprintf(
-			"Tool %q is registered but not enabled in this server configuration. "+
-				"Enable it with ENABLED_TOOLSETS or remove it from DISABLED_TOOLSETS.", name)), nil
+		return mcp.NewToolResultError(toolNotEnabledMessage(name)), nil
 	}
 	if h.filter != nil && !h.filter.Allowed(ctx, spec) {
-		return mcp.NewToolResultError(fmt.Sprintf("Tool %q is not allowed for this request.", name)), nil
+		return mcp.NewToolResultError(toolNotAllowedMessage(name)), nil
 	}
 
 	toolArguments, err := decodeArguments(arguments["arguments"])
@@ -437,9 +485,19 @@ func decodeArguments(value any) (map[string]any, error) {
 	}
 }
 
-func unknownToolMessage(registry *catalog.Registry, name string) string {
+func toolNotEnabledMessage(name string) string {
+	return fmt.Sprintf(
+		"Tool %q is registered but not enabled in this server configuration. "+
+			"Enable it with ENABLED_TOOLSETS or remove it from DISABLED_TOOLSETS.", name)
+}
+
+func toolNotAllowedMessage(name string) string {
+	return fmt.Sprintf("Tool %q is not allowed for this request.", name)
+}
+
+func unknownToolMessage(ctx context.Context, registry *catalog.Registry, name string, filter ToolFilter) string {
 	message := fmt.Sprintf("Unknown tool %q.", name)
-	suggestions := suggestNames(registry, name, 3)
+	suggestions := suggestNames(ctx, registry, name, 3, filter)
 	if len(suggestions) > 0 {
 		message += " Did you mean: " + strings.Join(suggestions, ", ") + "?"
 	}
@@ -447,13 +505,27 @@ func unknownToolMessage(registry *catalog.Registry, name string) string {
 	return message
 }
 
-func suggestNames(registry *catalog.Registry, query string, limit int) []string {
-	hits, err := NewLexicalSearcher(registry).Search(context.Background(), query, limit)
+func suggestNames(ctx context.Context, registry *catalog.Registry, query string, limit int, filter ToolFilter) []string {
+	candidateLimit := limit * 4
+	if candidateLimit < 8 {
+		candidateLimit = 8
+	}
+	hits, err := NewLexicalSearcher(registry).Search(ctx, query, candidateLimit)
 	if err != nil {
 		return nil
 	}
-	names := make([]string, 0, len(hits))
+	names := make([]string, 0, limit)
 	for _, hit := range hits {
+		if len(names) >= limit {
+			break
+		}
+		spec, ok := registry.Get(hit.Name)
+		if !ok || !spec.Invokable {
+			continue
+		}
+		if filter != nil && !filter.Allowed(ctx, spec) {
+			continue
+		}
 		names = append(names, hit.Name)
 	}
 	return names

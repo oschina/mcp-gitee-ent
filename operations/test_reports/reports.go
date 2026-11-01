@@ -165,7 +165,7 @@ var GetTestReportTool = mcp.NewTool(GetTestReport,
 )
 
 var UpdateTestReportTool = mcp.NewTool(UpdateTestReport,
-	mcp.WithDescription("Update a test report title, pass state, components, or recompute its statistics."),
+	mcp.WithDescription("Update a test report title, passed, components, or recompute its statistics."),
 	mcp.WithNumber("enterprise_id", mcp.Description("Enterprise ID"), mcp.Required()),
 	mcp.WithNumber("program_id", mcp.Description("Project ID required by test management APIs."), mcp.Required()),
 	mcp.WithNumber("test_report_id", mcp.Description("Test report ID."), mcp.Required()),

@@ -234,6 +234,9 @@ The server provides various tools for interacting with Gitee Enterprise:
 | **upload_enterprise_document_files** | Document | Import local ZIP, HTML, TXT, or Markdown files into a document |
 | **download_enterprise_document** | Document | Export a document as Markdown, HTML, or PDF to a local directory |
 | **update_enterprise_document_page** | Document | Replace a page's content with a version precondition |
+| **search_tools** | Discovery | Find candidate tool names by natural-language query |
+| **inspect_tool** | Discovery | Show the full argument schema and a valid example for one tool |
+| **invoke_tool** | Discovery | Execute one enabled tool by exact name with a JSON argument object |
 
 ### Enterprise Document Workflow
 

@@ -153,6 +153,20 @@ mcp-gitee-ent --version
 - 如果同时指定了 `enabled-toolsets` 和 `disabled-toolsets`，则 `enabled-toolsets` 优先
 - 工具名称区分大小写
 
+## 渐进式工具发现
+
+服务端提供三个用于发现工具的元工具，客户端无需预先列出全部工具即可使用完整工具目录：
+
+1. `search_tools(query, domain?, limit?)` 通过自然语言查询查找候选工具名。结果包含工具名、简介、所属域、风险等级和必填参数名。`domain` 可将搜索限定到某个目录域，`limit` 默认为 8（最大 20）。
+2. `inspect_tool(name)` 返回某个精确工具名的完整输入 schema、说明和一个有效示例。当参数名或格式不明确时，应先查看搜索结果再进行调用。
+3. `invoke_tool(name, arguments)` 使用 JSON 参数对象执行某个精确工具名。它不能递归调用自身。
+
+工具发现与直接注册的工具使用相同的工具集配置进行过滤。被 `ENABLED_TOOLSETS` / `DISABLED_TOOLSETS` 禁用或隐藏的工具会被 `inspect_tool` 和 `invoke_tool` 拒绝，也不会被 `search_tools` 返回。当请求自带工具过滤条件时，`inspect_tool` 和 `invoke_tool` 同样会拒绝该过滤之外的工具，未知工具名的建议也只包含当前请求可用的工具。
+
+搜索不会伪造结果。如果查询只匹配到不可用的工具（例如某个已禁用的域），它仍会返回常规的“无匹配”提示，并建议放宽关键词或移除域过滤。
+
+工具发现元工具属于基础设施：即使设置了 `ENABLED_TOOLSETS` 白名单，`search_tools`、`inspect_tool` 和 `invoke_tool` 仍保持可用，即使它们未被显式列出。只有在 `DISABLED_TOOLSETS` 中显式指定时它们才会被隐藏，除非它们同时也在 `ENABLED_TOOLSETS` 中显式指定——此时以启用项为准。
+
 ## 可用工具
 
 服务器提供了多种工具用于与 Gitee 企业版交互：
@@ -199,6 +213,9 @@ mcp-gitee-ent --version
 | **upload_enterprise_document_files** | 文档 | 将本地 ZIP、HTML、TXT 或 Markdown 文件导入文档 |
 | **download_enterprise_document** | 文档 | 将文档以 Markdown、HTML 或 PDF 导出到本地目录 |
 | **update_enterprise_document_page** | 文档 | 使用版本前置条件完整替换页面内容 |
+| **search_tools** | 工具发现 | 通过自然语言查询查找候选工具名 |
+| **inspect_tool** | 工具发现 | 查看某个工具的完整参数 schema 和示例 |
+| **invoke_tool** | 工具发现 | 使用 JSON 参数对象按精确工具名执行某个已启用工具 |
 
 ### 企业文档使用流程
 

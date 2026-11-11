@@ -54,6 +54,7 @@ var SearchDomains = []string{
 	"scrum_versions",
 	"enterprises",
 	"user",
+	"week_reports",
 }
 
 // Hit is one search result. Only names are returned so that callers cannot

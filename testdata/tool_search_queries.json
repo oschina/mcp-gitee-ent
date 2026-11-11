@@ -773,5 +773,124 @@
       "restore_issues"
     ],
     "kind": "business"
+  },
+  {
+    "query": "get_week_report",
+    "expected": [
+      "get_week_report"
+    ],
+    "kind": "exact"
+  },
+  {
+    "query": "save_week_report",
+    "expected": [
+      "save_week_report"
+    ],
+    "kind": "exact"
+  },
+  {
+    "query": "create_project_branch",
+    "expected": [
+      "create_project_branch"
+    ],
+    "kind": "exact"
+  },
+  {
+    "query": "create_repository_file",
+    "expected": [
+      "create_repository_file"
+    ],
+    "kind": "exact"
+  },
+  {
+    "query": "update_repository_file",
+    "expected": [
+      "update_repository_file"
+    ],
+    "kind": "exact"
+  },
+  {
+    "query": "delete_repository_file",
+    "expected": [
+      "delete_repository_file"
+    ],
+    "kind": "exact"
+  },
+  {
+    "query": "get_issue_type_custom_fields",
+    "expected": [
+      "get_issue_type_custom_fields"
+    ],
+    "kind": "exact"
+  },
+  {
+    "query": "list_member_events",
+    "expected": [
+      "list_member_events"
+    ],
+    "kind": "exact"
+  },
+  {
+    "query": "写周报",
+    "expected": [
+      "save_week_report"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "提交周报",
+    "expected": [
+      "save_week_report"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "周报详情",
+    "expected": [
+      "get_week_report"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "创建分支",
+    "expected": [
+      "create_project_branch"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "新建文件",
+    "expected": [
+      "create_repository_file"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "更新仓库文件",
+    "expected": [
+      "update_repository_file"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "删除文件",
+    "expected": [
+      "delete_repository_file"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "工作项自定义字段",
+    "expected": [
+      "get_issue_type_custom_fields"
+    ],
+    "kind": "business"
+  },
+  {
+    "query": "成员动态",
+    "expected": [
+      "list_member_events"
+    ],
+    "kind": "business"
   }
 ]

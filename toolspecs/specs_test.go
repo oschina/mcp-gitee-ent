@@ -4,8 +4,8 @@ import "testing"
 
 func TestAllSpecs(t *testing.T) {
 	specs := All()
-	if len(specs) != 140 {
-		t.Fatalf("specs = %d, want 140", len(specs))
+	if len(specs) != 148 {
+		t.Fatalf("specs = %d, want 148", len(specs))
 	}
 	visible := 0
 	for _, spec := range specs {

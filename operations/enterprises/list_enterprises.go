@@ -24,5 +24,7 @@ func ListEnterprisesHandleFunc(ctx context.Context, request mcp.CallToolRequest,
 
 	data := types.PagedResponse[types.BasicEnterprise]{}
 
-	return giteeClient.HandleMCPResult(&data)
+	result, err := giteeClient.HandleMCPResult(&data)
+	utils.CacheEnterprises(data.Data)
+	return result, err
 }

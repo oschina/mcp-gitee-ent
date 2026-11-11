@@ -108,6 +108,7 @@ mcp-gitee-ent --version
 
 - `--token`: 访问令牌
 - `--api-base`: Gitee 企业版 API 基础 URL（默认：https://api.gitee.com/enterprises）
+- `--web-base`: 生成 html_url 使用的企业版网页地址（默认：https://e.gitee.com；教育版可配 https://edu.gitee.com）
 - `--version`: 显示版本信息
 - `--transport`: 传输类型（stdio 或 sse，默认：stdio）
 - `--sse-address`: SSE 服务器的地址和端口（默认：localhost:8000）
@@ -120,6 +121,7 @@ mcp-gitee-ent --version
 
 - `GITEE_ENT_MCP_ACCESS_TOKEN`: Gitee MCP 企业版访问令牌
 - `GITEE_ENT_API_BASE`: Gitee 企业版 API 基础 URL
+- `GITEE_ENT_WEB_BASE`: 生成 html_url 使用的企业版网页地址（默认：https://e.gitee.com）
 - `GITEE_ENT_MCP_ALLOWED_FILE_ROOTS`: 文档上传和下载允许访问的绝对目录。多个目录使用操作系统的路径列表分隔符分隔（Unix 为 `:`，Windows 为 `;`）。默认仅允许服务器的当前工作目录。
 - `ENABLED_TOOLSETS`: 逗号分隔的要启用的工具列表
 - `DISABLED_TOOLSETS`: 逗号分隔的要禁用的工具列表

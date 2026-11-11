@@ -84,6 +84,7 @@ func (c *CookieAuthorizer) Authorize(req *http.Request) error {
 type GiteeClient struct {
 	Url         string
 	Method      string
+	ApiPath     string
 	Payload     interface{}
 	Body        io.Reader
 	ContentType string
@@ -102,6 +103,7 @@ func NewGiteeClient(method, urlPath string, opts ...Option) *GiteeClient {
 	// Initialize client with defaults, including apiBase from GetApiBase()
 	client := &GiteeClient{
 		Method:     method,
+		ApiPath:    urlPath,
 		httpClient: giteeHTTPClient,
 		authorizer: &BearerTokenAuthorizer{},
 		apiBase:    GetApiBase(),
@@ -369,7 +371,7 @@ func (g *GiteeClient) HandleMCPResultContext(ctx context.Context, object any) (*
 		return mcp.NewToolResultError(errorMessage), NewInternalError(errors.New(errorMessage))
 	}
 
-	return MCPJSONResult(object)
+	return MCPJSONResult(EnrichResult(g.ApiPath, object))
 }
 
 func MCPErrorResult(err error) (*mcp.CallToolResult, error) {

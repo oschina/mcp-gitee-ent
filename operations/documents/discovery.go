@@ -141,13 +141,14 @@ func GetDocumentNodeHandleFunc(ctx context.Context, request mcp.CallToolRequest,
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
 	}
-	client := utils.NewGiteeClient("GET", fmt.Sprintf("/%d/doc_nodes/%d", enterpriseID, nodeID), opts...)
+	path := fmt.Sprintf("/%d/doc_nodes/%d", enterpriseID, nodeID)
+	client := utils.NewGiteeClient("GET", path, opts...)
 	var payload map[string]any
 	if result, err := client.HandleMCPResultContext(ctx, &payload); result != nil && result.IsError {
 		return result, err
 	}
 	renameLinkedIssues(payload)
-	return utils.MCPJSONResult(payload)
+	return utils.EnrichJSONResult(path, payload)
 }
 
 // renameLinkedIssues repairs the upstream doc node detail payload, whose

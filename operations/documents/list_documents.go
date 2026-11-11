@@ -112,7 +112,7 @@ func ListDocumentsHandleFunc(ctx context.Context, request mcp.CallToolRequest, o
 		}
 	}
 
-	return utils.MCPJSONResult(types.DocumentListResponse{
+	return utils.EnrichJSONResult(path, types.DocumentListResponse{
 		TotalCount: raw.TotalCount,
 		Documents:  documents,
 	})

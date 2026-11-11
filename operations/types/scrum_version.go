@@ -3,6 +3,8 @@ package types
 type ScrumVersion struct {
 	ID                int    `json:"id"`
 	Title             string `json:"title"`
+	EnterpriseId      int    `json:"enterprise_id"`
+	ProgramId         int    `json:"program_id"`
 	State             string `json:"state"`
 	Description       string `json:"description"`
 	Number            string `json:"number"`

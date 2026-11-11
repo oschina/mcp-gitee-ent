@@ -108,6 +108,7 @@ Config example:
 
 - `--token`: access token
 - `--api-base`: Gitee Ent API base URL (default: https://api.gitee.com/enterprises)
+- `--web-base`: Enterprise web origin used to build html_url (default: https://e.gitee.com)
 - `--version`: Show version information
 - `--transport`: Transport type (stdio or sse, default: stdio)
 - `--sse-address`: The host and port to start the SSE server on (default: localhost:8000)
@@ -120,6 +121,7 @@ You can also configure the server using environment variables:
 
 - `GITEE_ENT_MCP_ACCESS_TOKEN`: Gitee MCP ent access token
 - `GITEE_ENT_API_BASE`: Gitee ENT API base URL
+- `GITEE_ENT_WEB_BASE`: Enterprise web origin used to build html_url (default: https://e.gitee.com)
 - `GITEE_ENT_MCP_ALLOWED_FILE_ROOTS`: Allowed absolute directories for document upload and download. Separate multiple directories with the operating system path-list separator (`:` on Unix, `;` on Windows). Defaults to the server's current working directory.
 - `ENABLED_TOOLSETS`: Comma-separated list of tools to enable
 - `DISABLED_TOOLSETS`: Comma-separated list of tools to disable

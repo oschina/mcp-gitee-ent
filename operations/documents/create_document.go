@@ -97,5 +97,5 @@ func CreateDocumentHandleFunc(ctx context.Context, request mcp.CallToolRequest, 
 		return utils.MCPErrorResult(err)
 	}
 
-	return utils.MCPJSONResult(types.NewDocument(raw))
+	return utils.EnrichJSONResult(path, types.NewDocument(raw))
 }

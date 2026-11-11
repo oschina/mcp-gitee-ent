@@ -85,7 +85,7 @@ func CreateScrumSprintHandleFunc(ctx context.Context, request mcp.CallToolReques
 		return result, err
 	}
 	if created.Id <= 0 {
-		return utils.MCPJSONResult(created)
+		return utils.EnrichJSONResult(apiUrl, created)
 	}
 	detail := utils.NewGiteeClient(
 		"GET",
@@ -93,8 +93,9 @@ func CreateScrumSprintHandleFunc(ctx context.Context, request mcp.CallToolReques
 		utils.WithQuery(map[string]interface{}{"program_id": programID}),
 	)
 	var detailed any
+	detailPath := fmt.Sprintf("/%d/programs/%d/scrum_sprints/%d", enterpriseID, programID, created.Id)
 	if result, err := detail.HandleMCPResultContext(ctx, &detailed); err != nil || (result != nil && result.IsError) {
-		return utils.MCPJSONResult(created)
+		return utils.EnrichJSONResult(apiUrl, created)
 	}
-	return utils.MCPJSONResult(detailed)
+	return utils.EnrichJSONResult(detailPath, detailed)
 }

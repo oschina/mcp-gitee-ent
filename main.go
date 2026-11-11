@@ -12,6 +12,7 @@ import (
 	"gitee.com/oschina/mcp-gitee-ent/operations/discovery"
 	"gitee.com/oschina/mcp-gitee-ent/toolspecs"
 	"gitee.com/oschina/mcp-gitee-ent/utils"
+	"gitee.com/oschina/mcp-gitee-ent/utils/urlbuilder"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 )
@@ -185,6 +186,7 @@ func main() {
 	var (
 		accessToken string
 		apiBase     string
+		webBase     string
 		showVersion bool
 		transport   string
 		addr        string
@@ -192,6 +194,7 @@ func main() {
 
 	flag.StringVar(&accessToken, "token", "", "Gitee Ent MCP access token")
 	flag.StringVar(&apiBase, "api-base", "", "Gitee Ent API base URL (default: https://api.gitee.com/enterprises)")
+	flag.StringVar(&webBase, "web-base", "", "Gitee Ent web origin used for html_url (default: https://e.gitee.com)")
 	flag.BoolVar(&showVersion, "version", false, "Show version information")
 	flag.StringVar(&transport, "transport", "stdio", "Transport type (stdio or sse)")
 	flag.StringVar(&addr, "sse-address", "localhost:8000", "The host and port to start the sse server on")
@@ -212,6 +215,13 @@ func main() {
 	if apiBase != "" {
 		utils.SetApiBase(apiBase)
 	}
+
+	if webBase != "" {
+		urlbuilder.SetWebBase(webBase)
+	}
+
+	utils.EnableEnterprisePathAutoResolve(true)
+	go utils.WarmEnterprisePaths()
 
 	if err := run(transport, addr); err != nil {
 		panic(err)
